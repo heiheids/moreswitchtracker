@@ -1,0 +1,11 @@
+{
+  "trader_spawn": {
+    "subtitle": "tracker.subtitle.trader_spawn",
+    "sounds": [
+      {
+        "name": "tracker:trader_spawn",
+        "stream": false
+      }
+    ]
+  }
+}

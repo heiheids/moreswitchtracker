@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "id": "moreswitchtracker",
+  "version": "${version}",
+  "name": "更多开关追踪",
+  "description": "功能不多的小模组：J 键打开设置面板，十来个实用开关加几条追踪，开关即时生效，不改变原版玩法。 A small mod: press J for a short list of toggles and trackers. Few features, no gameplay overhaul.",
+  "authors": [
+    "黑山大叔",
+    "Bilibili: https://space.bilibili.com/19428259",
+    "GitHub: https://github.com/heiheids"
+  ],
+  "license": "MIT",
+  "icon": "assets/moreswitchtracker/textures/icon.png",
+  "environment": "*",
+  "mixins": [
+    "tracker.mixins.json",
+    "tracker.client.mixins.json",
+    "moreswitches.mixins.json",
+    "moreswitches.client.mixins.json"
+  ],
+  "entrypoints": {
+    "main": [
+      "com.heishandashu.tracker.TrackerMod"
+    ],
+    "client": [
+      "com.heishandashu.tracker.TrackerClient"
+    ],
+    "modmenu": [
+      "com.heishandashu.tracker.compat.ModMenuIntegration"
+    ]
+  },
+  "depends": {
+    "fabricloader": ">=0.20.0",
+    "minecraft": "~26.3",
+    "java": ">=25",
+    "fabric-api": "*"
+  },
+  "suggests": {
+    "modmenu": "*"
+  }
+}

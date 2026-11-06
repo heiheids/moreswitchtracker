@@ -1,0 +1,30 @@
+# Gradle / build output
+build/
+.gradle/
+out/
+bin/
+
+# IDE
+.idea/
+*.iml
+*.ipr
+*.iws
+.vscode/
+.settings/
+.classpath
+.project
+
+# Local run directories
+run/
+logs/
+*.log
+crash-reports/
+
+# Gradle caches
+gradle-app.setting
+.gradletasknamecache
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini

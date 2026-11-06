@@ -1,0 +1,36 @@
+modLoader = "javafml"
+loaderVersion = "${loader_version_range}"
+license = "${mod_license}"
+
+[[mods]]
+modId = "${mod_id}"
+version = "${mod_version}"
+displayName = "${mod_name}"
+authors = "${mod_authors} | Bilibili: https://space.bilibili.com/19428259 | GitHub: https://github.com/heiheids"
+description = '''${mod_description}'''
+logoFile = "icon.png"
+
+# Common + client mixins of the More Switches half.
+[[mixins]]
+config = "moreswitches.mixins.json"
+
+[[mixins]]
+config = "moreswitches.client.mixins.json"
+
+# Common mixins of the Tracker half. Every tracker feature is a switch inside the same merged UI.
+[[mixins]]
+config = "tracker.mixins.json"
+
+[[dependencies.${mod_id}]]
+modId = "neoforge"
+type = "required"
+versionRange = "${neo_version_range}"
+ordering = "NONE"
+side = "BOTH"
+
+[[dependencies.${mod_id}]]
+modId = "minecraft"
+type = "required"
+versionRange = "${minecraft_version_range}"
+ordering = "NONE"
+side = "BOTH"

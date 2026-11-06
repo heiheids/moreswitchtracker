@@ -1,0 +1,39 @@
+modLoader = "javafml"
+loaderVersion = "${loader_version_range}"
+license = "MIT"
+
+[[mods]]
+modId = "${mod_id}"
+version = "${mod_version}"
+displayName = "更多开关追踪"
+authors = "黑山大叔 | Bilibili: https://space.bilibili.com/19428259 | GitHub: https://github.com/heiheids"
+description = '''功能不多的小模组：J 键打开设置面板，十来个实用开关加几条追踪，开关即时生效，不改变原版玩法。 A small mod: press J for a short list of toggles and trackers. Few features, no gameplay overhaul.'''
+logoFile = "assets/moreswitchtracker/textures/icon.png"
+
+# Common + client mixins of the More Switches half.
+[[mixins]]
+config = "moreswitches.mixins.json"
+
+[[mixins]]
+config = "moreswitches.client.mixins.json"
+
+# Common + client mixins of the Tracker half. Every tracker feature is a switch inside the same UI.
+[[mixins]]
+config = "tracker.mixins.json"
+
+[[mixins]]
+config = "tracker.client.mixins.json"
+
+[[dependencies.${mod_id}]]
+modId = "neoforge"
+type = "required"
+versionRange = "${neo_version_range}"
+ordering = "NONE"
+side = "BOTH"
+
+[[dependencies.${mod_id}]]
+modId = "minecraft"
+type = "required"
+versionRange = "${minecraft_version_range}"
+ordering = "NONE"
+side = "BOTH"

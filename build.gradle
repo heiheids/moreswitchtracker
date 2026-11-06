@@ -1,0 +1,112 @@
+plugins {
+    id 'java'
+    id 'net.neoforged.moddev' version '2.0.148'
+}
+
+base {
+    archivesName = project.mod_id
+}
+
+version = "${mod_version}"
+
+// NeoForge 1.21.1 runs on Java 21. The toolchain keeps the build reproducible no matter which JDK
+// starts Gradle.
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
+    withSourcesJar()
+}
+
+neoForge {
+    version = project.neo_version
+}
+
+// The pure-Java logic (cooldown timing, slot arithmetic, sound matching) is tested with JUnit 5.
+// No Minecraft types are involved, so the tests run without launching the game.
+//
+// The JUnit jars live in libs/junit instead of being downloaded from a repository. The build host
+// cannot reach some Maven mirrors, and a self-contained test classpath makes `gradle test` work
+// with `--offline`; the jars are the official 5.11.4 artifacts.
+dependencies {
+    def junitJars = fileTree('libs/junit') { include '*.jar' }
+    testImplementation junitJars
+    testRuntimeOnly junitJars
+}
+
+test {
+    useJUnitPlatform()
+    testLogging {
+        events 'passed', 'failed', 'skipped'
+        exceptionFormat = 'full'
+    }
+}
+
+tasks.withType(JavaCompile).configureEach {
+    it.options.encoding = 'UTF-8'
+    it.options.release = 21
+}
+
+// Expands the version into neoforge.mods.toml so the metadata always matches the jar.
+//
+// Do not use ProcessResources.expand here. It reads with a platform-dependent charset on this
+// build and silently double-encodes Chinese displayName/description (`更多开关` became `æ›´å¤š`).
+// Reading and writing explicitly as UTF-8 is the only version of this task that survives the
+// Windows/PowerShell environment this project is built in.
+var generateModMetadata = tasks.register('generateModMetadata') {
+    var templateFile = file('src/main/templates/META-INF/neoforge.mods.toml')
+    var outputDir = layout.buildDirectory.dir('generated/sources/modMetadata')
+    inputs.file(templateFile)
+    inputs.properties(
+            minecraft_version      : project.minecraft_version,
+            minecraft_version_range: project.minecraft_version_range,
+            neo_version            : project.neo_version,
+            neo_version_range      : project.neo_version_range,
+            loader_version_range   : project.loader_version_range,
+            mod_id                 : project.mod_id,
+            mod_name               : project.mod_name,
+            mod_license            : project.mod_license,
+            mod_version            : project.mod_version,
+            mod_authors            : project.mod_authors,
+            mod_description        : project.mod_description)
+    outputs.dir(outputDir)
+    doLast {
+        var replaceProperties = [
+                minecraft_version      : project.minecraft_version,
+                minecraft_version_range: project.minecraft_version_range,
+                neo_version            : project.neo_version,
+                neo_version_range      : project.neo_version_range,
+                loader_version_range   : project.loader_version_range,
+                mod_id                 : project.mod_id,
+                mod_name               : project.mod_name,
+                mod_license            : project.mod_license,
+                mod_version            : project.mod_version,
+                mod_authors            : project.mod_authors,
+                mod_description        : project.mod_description
+        ]
+        var text = java.nio.file.Files.readString(templateFile.toPath(),
+                java.nio.charset.StandardCharsets.UTF_8)
+        replaceProperties.each { key, value ->
+            text = text.replace('${' + key + '}', value.toString())
+        }
+        var target = outputDir.get().file('META-INF/neoforge.mods.toml').asFile.toPath()
+        java.nio.file.Files.createDirectories(target.getParent())
+        java.nio.file.Files.writeString(target, text, java.nio.charset.StandardCharsets.UTF_8)
+    }
+}
+
+sourceSets.main.resources.srcDir generateModMetadata
+neoForge.ideSyncTask generateModMetadata
+
+jar {
+    manifest {
+        attributes(
+                'Implementation-Title': project.mod_name,
+                'Implementation-Version': project.version,
+                'Implementation-Vendor': project.mod_authors
+        )
+    }
+    from('LICENSE') {
+        rename { "${it}_${project.mod_id}" }
+    }
+}

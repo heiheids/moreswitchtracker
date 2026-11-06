@@ -1,0 +1,82 @@
+plugins {
+    id 'java-library'
+    id 'net.neoforged.moddev' version '2.0.148'
+}
+
+version = mod_version
+group = mod_group_id
+
+base {
+    archivesName = "${mod_id}-neoforge-${minecraft_version}"
+}
+
+java {
+    toolchain.languageVersion = JavaLanguageVersion.of(25)
+    withSourcesJar()
+}
+
+// The build host cannot reach maven.neoforged.net; resolve NeoForge/NeoForm
+// artifacts from the project-local mirror that is already populated.
+repositories {
+}
+
+neoForge {
+    version = project.neo_version
+
+    runs {
+        client {
+            client()
+        }
+        server {
+            server()
+            programArgument '--nogui'
+        }
+    }
+
+    mods {
+        "${mod_id}" {
+            sourceSet(sourceSets.main)
+        }
+    }
+}
+
+// Expand neoforge.mods.toml with explicit UTF-8. ProcessResources.expand on this host
+// double-encodes Chinese displayName/description; see the 1.21.1 build notes.
+var generateModMetadata = tasks.register('generateModMetadata') {
+    var templateFile = file('src/main/templates/META-INF/neoforge.mods.toml')
+    var outputDir = layout.buildDirectory.dir('generated/sources/modMetadata')
+    inputs.file(templateFile)
+    inputs.properties(
+            minecraft_version      : project.minecraft_version,
+            minecraft_version_range: project.minecraft_version_range,
+            neo_version            : project.neo_version,
+            neo_version_range      : project.neo_version_range,
+            loader_version_range   : project.loader_version_range,
+            mod_id                 : project.mod_id,
+            mod_version            : project.mod_version)
+    outputs.dir(outputDir)
+    doLast {
+        var replacements = [
+                minecraft_version      : project.minecraft_version,
+                minecraft_version_range: project.minecraft_version_range,
+                neo_version            : project.neo_version,
+                neo_version_range      : project.neo_version_range,
+                loader_version_range   : project.loader_version_range,
+                mod_id                 : project.mod_id,
+                mod_version            : project.mod_version
+        ]
+        var text = java.nio.file.Files.readString(templateFile.toPath(),
+                java.nio.charset.StandardCharsets.UTF_8)
+        replacements.each { key, value -> text = text.replace('${' + key + '}', value.toString()) }
+        var target = outputDir.get().file('META-INF/neoforge.mods.toml').asFile.toPath()
+        java.nio.file.Files.createDirectories(target.getParent())
+        java.nio.file.Files.writeString(target, text, java.nio.charset.StandardCharsets.UTF_8)
+    }
+}
+sourceSets.main.resources.srcDir generateModMetadata
+neoForge.ideSyncTask generateModMetadata
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+    options.release = 25
+}

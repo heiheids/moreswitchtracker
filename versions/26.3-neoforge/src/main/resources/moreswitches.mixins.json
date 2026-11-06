@@ -1,0 +1,13 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "com.heishandashu.moreswitches.mixin",
+  "compatibilityLevel": "JAVA_25",
+  "environment": "client",
+  "mixins": [
+    "MixinRainSleep"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}
