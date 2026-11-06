@@ -267,7 +267,8 @@ moreswitchtracker/
 
 ```bash
 ./gradlew build
-# 产物 build/libs/moreswitchtracker-neoforge-1.21.1-1.1.0.jar
+# 产物 build/libs/moreswitchtracker-1.1.0.jar
+# 发布时重命名为 moreswitchtracker-neoforge-1.21.1-1.1.0.jar
 ```
 
 ### 26.3 Fabric
@@ -275,6 +276,7 @@ moreswitchtracker/
 ```bash
 cd versions/26.3-fabric
 ./gradlew build
+# 产物 build/libs/moreswitchtracker-1.1.0.jar
 ```
 
 ### 26.3 NeoForge
@@ -282,6 +284,7 @@ cd versions/26.3-fabric
 ```bash
 cd versions/26.3-neoforge
 ./gradlew build
+# 产物 build/libs/moreswitchtracker-neoforge-26.3-1.1.0.jar
 ```
 
 三个工程都需要联网下载 Minecraft 与加载器依赖，首次构建较慢。

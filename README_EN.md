@@ -267,7 +267,8 @@ moreswitchtracker/
 
 ```bash
 ./gradlew build
-# output: build/libs/moreswitchtracker-neoforge-1.21.1-1.1.0.jar
+# output: build/libs/moreswitchtracker-1.1.0.jar
+# renamed to moreswitchtracker-neoforge-1.21.1-1.1.0.jar for release
 ```
 
 ### 26.3 Fabric
@@ -275,6 +276,7 @@ moreswitchtracker/
 ```bash
 cd versions/26.3-fabric
 ./gradlew build
+# output: build/libs/moreswitchtracker-1.1.0.jar
 ```
 
 ### 26.3 NeoForge
@@ -282,6 +284,7 @@ cd versions/26.3-fabric
 ```bash
 cd versions/26.3-neoforge
 ./gradlew build
+# output: build/libs/moreswitchtracker-neoforge-26.3-1.1.0.jar
 ```
 
 All three need network access to download Minecraft and loader dependencies; the first build is slow.
