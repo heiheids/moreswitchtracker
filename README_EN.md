@@ -146,6 +146,12 @@ While a free scale is active, the vanilla GUI Scale option has no effect — it 
 
 The scale is written to the config file and restored on the next launch. A value of `0` means "free scale off" (i.e. vanilla behaviour); in that case the key is not written at all.
 
+### Distance and smoothness
+
+The bar has a fixed size in blocks (about 1.35 blocks wide at Medium) and is converted to screen pixels with the same pinhole maths the projection uses, so **a distant creature gets a smaller bar and a close one a larger bar** — the same perspective a vanilla name tag has. The pixel width is clamped between 10 and 200 so it neither shrinks to a dot nor covers the screen.
+
+The bar is drawn with frame interpolation: entity positions, the eye and the view vector all use the current frame's partial tick, and the result is placed on sub-pixel offsets, so a moving creature no longer makes the bar stutter once per tick.
+
 ### One caveat
 
 A non-integer scale puts GUI elements on fractional pixels, so text edges can look very slightly softer than at integer scales. That is the inherent cost of any fractional scaling, and it is what buys you the freedom. If sharpness matters more to you, stick to integer steps such as `1×` or `2×`.

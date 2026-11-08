@@ -12,6 +12,7 @@ import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.player.LocalPlayer;
+import net.minecraft.util.Mth;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.phys.Vec3;
@@ -24,16 +25,27 @@ import java.util.Locale;
 /**
  * 血条 / overhead health bar for the 1.21.1 build.
  *
- * <p>Same design as the 26.3 sibling: the entity's head is projected to the HUD once per frame and
- * the bar is laid out in GUI pixels, so it stays pixel-crisp at any GUI scale and the 大/中/小
- * setting is exact. 1.21.1 has no {@code HudElementRegistry}, so the pass is registered through
- * the tracker's {@link ClientEvents} HUD hook.</p>
+ * <p>Same behaviour as the 26.3 sibling: the bar has a size in blocks and is converted to pixels
+ * with the projection's own pinhole maths, so it shrinks with distance; entity positions and the
+ * camera are interpolated with the frame's partial tick and placed on sub-pixel offsets, so a
+ * moving creature does not make the bar stutter.</p>
+ *
+ * <p>1.21.1 has no {@code HudElementRegistry}, so the pass is registered through the tracker's
+ * {@link ClientEvents} HUD hook, which hands over the partial tick directly.</p>
  */
 public final class HealthBarOverlay {
 
-    /** Base geometry at 中 size, in GUI pixels; the size setting multiplies these. */
-    private static final int BASE_BAR_WIDTH = 58;
-    private static final int BASE_BAR_HEIGHT = 6;
+    /** Bar width in world blocks at 中 size; the size setting multiplies this. */
+    private static final float WORLD_BAR_WIDTH = 1.35F;
+    private static final float BAR_ASPECT = 0.11F;
+    private static final float TEXT_ASPECT = 0.16F;
+
+    private static final float MIN_BAR_WIDTH = 10.0F;
+    private static final float MAX_BAR_WIDTH = 200.0F;
+    private static final float MIN_BAR_HEIGHT = 3.0F;
+    private static final float MAX_BAR_HEIGHT = 22.0F;
+    private static final float MIN_TEXT_SCALE = 0.5F;
+    private static final float MAX_TEXT_SCALE = 2.0F;
 
     private static final double RANGE = 48.0;
     private static final int MAX_BARS = 48;
@@ -71,7 +83,7 @@ public final class HealthBarOverlay {
         }
 
         try {
-            draw(graphics, minecraft, level, self, settings, display);
+            draw(graphics, minecraft, level, self, settings, display, partialTick);
         } catch (Throwable t) {
             if (!warned) {
                 warned = true;
@@ -82,8 +94,9 @@ public final class HealthBarOverlay {
     }
 
     private static void draw(GuiGraphics graphics, Minecraft minecraft, ClientLevel level,
-                             LocalPlayer self, ModSettings settings, HealthBarDisplay display) {
-        List<LivingEntity> targets = collect(level, self, settings);
+                             LocalPlayer self, ModSettings settings, HealthBarDisplay display,
+                             float partialTick) {
+        List<LivingEntity> targets = collect(level, self, settings, partialTick);
         if (!reported) {
             reported = true;
             MoreSwitchesMod.LOGGER.info("[{}] health bar: {} creatures in range, display={}, size={}",
@@ -96,37 +109,56 @@ public final class HealthBarOverlay {
 
         int width = minecraft.getWindow().getGuiScaledWidth();
         int height = minecraft.getWindow().getGuiScaledHeight();
-        Vec3 eye = self.getEyePosition();
-        Vec3 forward = self.getViewVector(1.0f);
+        Vec3 eye = self.getEyePosition(partialTick);
+        Vec3 forward = self.getViewVector(partialTick);
         double fov = minecraft.options.fov().get();
         Font font = minecraft.font;
-
-        float factor = settings.healthBarSize().factor();
-        int barWidth = Math.max(18, Math.round(BASE_BAR_WIDTH * factor));
-        int barHeight = Math.max(3, Math.round(BASE_BAR_HEIGHT * factor));
-        int textHeight = Math.max(5, Math.round(font.lineHeight * factor));
+        float sizeFactor = settings.healthBarSize().factor();
+        float worldWidth = WORLD_BAR_WIDTH * sizeFactor;
+        double tanHalfFov = Math.tan(Math.toRadians(fov) / 2.0);
 
         for (LivingEntity entity : targets) {
-            double anchorY = entity.getBoundingBox().maxY + HEAD_GAP;
-            Vec3 anchor = new Vec3(entity.getX(), anchorY, entity.getZ());
+            double anchorX = Mth.lerp(partialTick, entity.xo, entity.getX());
+            double anchorY = Mth.lerp(partialTick, entity.yo, entity.getY())
+                    + entity.getBbHeight() + HEAD_GAP;
+            double anchorZ = Mth.lerp(partialTick, entity.zo, entity.getZ());
+            Vec3 anchor = new Vec3(anchorX, anchorY, anchorZ);
+
             ScreenProjection.Projected projected =
                     ScreenProjection.project(eye, forward, fov, width, height, anchor, 0.0);
             if (!projected.onScreen() || projected.distance() > RANGE) {
                 continue;
             }
 
-            int centerX = (int) Math.round(projected.screenX());
-            int centerY = (int) Math.round(projected.screenY());
+            double pixelsPerBlock = (height / 2.0) / (tanHalfFov * Math.max(0.25, projected.distance()));
+            float barWidth = clamp((float) (worldWidth * pixelsPerBlock),
+                    MIN_BAR_WIDTH, MAX_BAR_WIDTH);
+            float barHeight = clamp(barWidth * BAR_ASPECT, MIN_BAR_HEIGHT, MAX_BAR_HEIGHT);
+            float textScale = clamp((float) (worldWidth * TEXT_ASPECT * pixelsPerBlock
+                    / Math.max(1, font.lineHeight)), MIN_TEXT_SCALE, MAX_TEXT_SCALE);
 
+            float exactX = (float) projected.screenX();
+            float exactY = (float) projected.screenY();
+            int baseX = (int) Math.floor(exactX);
+            int baseY = (int) Math.floor(exactY);
+
+            PoseStack pose = graphics.pose();
+            pose.pushPose();
+            pose.translate(exactX - baseX, exactY - baseY, 0.0F);
+
+            int barPixels = Math.round(barWidth);
+            int barPixelsHigh = Math.round(barHeight);
             if (display.showsBar()) {
-                drawBar(graphics, entity, centerX, centerY, barWidth, barHeight);
+                drawBar(graphics, entity, baseX, baseY, barPixels, barPixelsHigh);
             }
             if (display.showsNumbers()) {
                 int textTop = display.showsBar()
-                        ? centerY - barHeight / 2 - textHeight - 1
-                        : centerY - textHeight / 2;
-                drawNumbers(graphics, font, entity, centerX, textTop, factor);
+                        ? baseY - barPixelsHigh / 2 - Math.round(font.lineHeight * textScale) - 1
+                        : baseY - Math.round(font.lineHeight * textScale) / 2;
+                drawNumbers(graphics, font, entity, baseX, textTop, textScale);
             }
+
+            pose.popPose();
         }
     }
 
@@ -175,8 +207,8 @@ public final class HealthBarOverlay {
     }
 
     private static List<LivingEntity> collect(ClientLevel level, LocalPlayer self,
-                                              ModSettings settings) {
-        Vec3 eye = self.getEyePosition();
+                                              ModSettings settings, float partialTick) {
+        Vec3 eye = self.getEyePosition(partialTick);
         List<LivingEntity> found = new ArrayList<>();
 
         for (Entity entity : level.entitiesForRendering()) {
@@ -190,18 +222,26 @@ public final class HealthBarOverlay {
             if (category == null || !settings.isHealthBarEnabled(category)) {
                 continue;
             }
-            if (eye.distanceToSqr(living.getX(), living.getBoundingBox().maxY, living.getZ())
-                    > RANGE * RANGE) {
+            double x = Mth.lerp(partialTick, living.xo, living.getX());
+            double y = Mth.lerp(partialTick, living.yo, living.getY());
+            double z = Mth.lerp(partialTick, living.zo, living.getZ());
+            if (eye.distanceToSqr(x, y, z) > RANGE * RANGE) {
                 continue;
             }
             found.add(living);
         }
 
         if (found.size() > MAX_BARS) {
-            found.sort(Comparator.comparingDouble(
-                    entity -> eye.distanceToSqr(entity.getX(), entity.getY(), entity.getZ())));
+            found.sort(Comparator.comparingDouble(entity -> eye.distanceToSqr(
+                    Mth.lerp(partialTick, entity.xo, entity.getX()),
+                    Mth.lerp(partialTick, entity.yo, entity.getY()),
+                    Mth.lerp(partialTick, entity.zo, entity.getZ()))));
             return new ArrayList<>(found.subList(0, MAX_BARS));
         }
         return found;
+    }
+
+    private static float clamp(float value, float min, float max) {
+        return value < min ? min : Math.min(value, max);
     }
 }
