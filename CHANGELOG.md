@@ -12,6 +12,16 @@
   抓一次 `RenderSystem.getProjectionMatrix()` 再在 HUD 阶段复用。血条位置与那一帧画面
   在数学上必然一致，不会再偏。
 
+### 1.21.1 构建修复（同日）
+
+1.21.1 的 jar 是用 javac + 手工打包产出的，打包脚本把 `src/main/templates` 里的
+`neoforge.mods.toml` 模板原样写了进去，而 `${mod_id}` 这类占位符只有 Gradle 的
+processResources 会展开。结果是 FML 报 `Invalid bare key: '${mod_id}'`，
+整个游戏在模组扫描阶段就判定为 broken mod state 并退出。
+
+现在改为从 1.1.0 的正式 jar 里取已展开的元数据，只替换版本号，并在打包时校验
+TOML 能解析、不含残留占位符。发布包里 1.21.1 的 jar 已替换，26.3 的两个 jar 不受影响。
+
 ## 1.2.1 — 2026-11-08
 
 ### 修复
