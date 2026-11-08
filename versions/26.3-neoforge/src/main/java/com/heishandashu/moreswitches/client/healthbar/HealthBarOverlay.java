@@ -5,7 +5,7 @@ import com.heishandashu.moreswitches.config.HealthBarCategory;
 import com.heishandashu.moreswitches.config.HealthBarDisplay;
 import com.heishandashu.moreswitches.config.ModSettings;
 import com.heishandashu.tracker.client.compat.TrackerClientEvents;
-import com.heishandashu.tracker.client.render.ScreenProjection;
+import net.minecraft.client.Camera;
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
@@ -18,6 +18,8 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.phys.Vec3;
 import org.joml.Matrix3x2fStack;
+import org.joml.Matrix4f;
+import org.joml.Vector4f;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -27,20 +29,20 @@ import java.util.Locale;
 /**
  * 血条 / overhead health bar: a slim red bar and the current/maximum numbers above a creature.
  *
- * <p>Drawn on the HUD rather than in the world, so the bar stays crisp at any GUI scale. Two things
- * make it behave like a world-space object anyway:</p>
+ * <p>Drawn on the HUD rather than in the world, so the bar stays crisp at any GUI scale. What makes
+ * it sit on the creature exactly:</p>
  *
  * <ul>
+ *   <li><b>The camera's own matrix.</b> The world was rendered with {@link Camera}, which includes
+ *       view bobbing, FOV effects and a possible third-person offset. Rebuilding a pinhole from the
+ *       player's eye and {@code options.fov()} instead makes the bar drift away from the creature
+ *       as soon as the player walks — that is what used to happen. Projecting with
+ *       {@code getViewRotationProjectionMatrix} cannot disagree with the frame that was drawn.</li>
  *   <li><b>Perspective size.</b> The bar has a size in blocks and is converted to pixels with the
- *       same pinhole maths the projection uses, so a creature twice as far away gets a bar half as
- *       wide. A fixed pixel size would make every bar look the same regardless of distance.</li>
- *   <li><b>Interpolation.</b> Entity positions only move 20 times a second while the camera moves
- *       every frame, so reading the raw position makes the bar jump once per tick. Everything is
- *       interpolated with the frame's partial tick, and the result is placed on sub-pixel offsets
- *       so the rounding to whole GUI pixels does not add a second, coarser stutter.</li>
+ *       camera's real FOV, so a creature twice as far away gets a bar half as wide.</li>
+ *   <li><b>Interpolation.</b> Entity positions only move 20 times a second; they are lerped with the
+ *       frame's partial tick and placed on sub-pixel offsets so the bar does not stutter.</li>
  * </ul>
- *
- * <p>The whole pass is skipped while the page's display mode is {@code off}.</p>
  */
 public final class HealthBarOverlay {
 
@@ -49,7 +51,6 @@ public final class HealthBarOverlay {
 
     /** Bar width in world blocks at 中 size; the size setting multiplies this. */
     private static final float WORLD_BAR_WIDTH = 1.35F;
-    /** Bar height as a fraction of its width, and text height likewise. */
     private static final float BAR_ASPECT = 0.11F;
     private static final float TEXT_ASPECT = 0.16F;
 
@@ -123,39 +124,31 @@ public final class HealthBarOverlay {
 
         int width = minecraft.getWindow().getGuiScaledWidth();
         int height = minecraft.getWindow().getGuiScaledHeight();
-        Vec3 eye = self.getEyePosition(partialTick);
-        Vec3 forward = self.getViewVector(partialTick);
-        double fov = minecraft.options.fov().get();
+        Camera camera = minecraft.gameRenderer.mainCamera();
+        Vec3 eye = camera.position();
+        Matrix4f viewProjection = camera.getViewRotationProjectionMatrix(new Matrix4f());
         Font font = minecraft.font;
         float sizeFactor = settings.healthBarSize().factor();
         float worldWidth = WORLD_BAR_WIDTH * sizeFactor;
-        double tanHalfFov = Math.tan(Math.toRadians(fov) / 2.0);
+        double tanHalfFov = Math.tan(Math.toRadians(camera.getFov()) / 2.0);
 
+        float[] screen = new float[2];
         for (LivingEntity entity : targets) {
-            double anchorX = Mth.lerp(partialTick, entity.xo, entity.getX());
-            double anchorY = Mth.lerp(partialTick, entity.yo, entity.getY())
-                    + entity.getBbHeight() + HEAD_GAP;
-            double anchorZ = Mth.lerp(partialTick, entity.zo, entity.getZ());
-            Vec3 anchor = new Vec3(anchorX, anchorY, anchorZ);
-
-            ScreenProjection.Projected projected =
-                    ScreenProjection.project(eye, forward, fov, width, height, anchor, 0.0);
-            if (!projected.onScreen() || projected.distance() > RANGE) {
+            Vec3 anchor = anchorOf(entity, partialTick);
+            double distance = eye.distanceTo(anchor);
+            if (distance > RANGE || !project(viewProjection, eye, anchor, width, height, screen)) {
                 continue;
             }
 
-            // Pinhole size: how many GUI pixels one block spans at this distance.
-            double pixelsPerBlock = (height / 2.0) / (tanHalfFov * Math.max(0.25, projected.distance()));
+            double pixelsPerBlock = (height / 2.0) / (tanHalfFov * Math.max(0.25, distance));
             float barWidth = clamp((float) (worldWidth * pixelsPerBlock),
                     MIN_BAR_WIDTH, MAX_BAR_WIDTH);
             float barHeight = clamp(barWidth * BAR_ASPECT, MIN_BAR_HEIGHT, MAX_BAR_HEIGHT);
             float textScale = clamp((float) (worldWidth * TEXT_ASPECT * pixelsPerBlock
                     / Math.max(1, font.lineHeight)), MIN_TEXT_SCALE, MAX_TEXT_SCALE);
 
-            // Whole pixels for the layout, plus the fractional remainder as a pose offset: that keeps
-            // the bar on the exact projected point instead of snapping to the GUI pixel grid.
-            float exactX = (float) projected.screenX();
-            float exactY = (float) projected.screenY();
+            float exactX = screen[0];
+            float exactY = screen[1];
             int baseX = (int) Math.floor(exactX);
             int baseY = (int) Math.floor(exactY);
 
@@ -177,6 +170,39 @@ public final class HealthBarOverlay {
 
             pose.popMatrix();
         }
+    }
+
+    /** World point above the creature, interpolated to this frame. */
+    private static Vec3 anchorOf(LivingEntity entity, float partialTick) {
+        return new Vec3(
+                Mth.lerp(partialTick, entity.xo, entity.getX()),
+                Mth.lerp(partialTick, entity.yo, entity.getY()) + entity.getBbHeight() + HEAD_GAP,
+                Mth.lerp(partialTick, entity.zo, entity.getZ()));
+    }
+
+    /**
+     * Projects a world point with the matrix the frame was drawn with.
+     *
+     * @return false when the point is behind the camera or outside the view
+     */
+    private static boolean project(Matrix4f viewProjection, Vec3 eye, Vec3 point,
+                                   int width, int height, float[] out) {
+        Vector4f clip = viewProjection.transform(new Vector4f(
+                (float) (point.x - eye.x),
+                (float) (point.y - eye.y),
+                (float) (point.z - eye.z),
+                1.0F));
+        if (clip.w <= 1.0E-4F) {
+            return false;
+        }
+        float ndcX = clip.x / clip.w;
+        float ndcY = clip.y / clip.w;
+        if (Math.abs(ndcX) > 1.0F || Math.abs(ndcY) > 1.0F) {
+            return false;
+        }
+        out[0] = (ndcX * 0.5F + 0.5F) * width;
+        out[1] = (0.5F - ndcY * 0.5F) * height;
+        return true;
     }
 
     private static void drawBar(GuiGraphicsExtractor graphics, LivingEntity entity,
@@ -226,7 +252,7 @@ public final class HealthBarOverlay {
     /** Living creatures in range whose category is switched on, nearest first. */
     private static List<LivingEntity> collect(ClientLevel level, LocalPlayer self,
                                               ModSettings settings, float partialTick) {
-        Vec3 eye = self.getEyePosition(partialTick);
+        Vec3 eye = Minecraft.getInstance().gameRenderer.mainCamera().position();
         List<LivingEntity> found = new ArrayList<>();
 
         for (Entity entity : level.entitiesForRendering()) {
@@ -240,20 +266,15 @@ public final class HealthBarOverlay {
             if (category == null || !settings.isHealthBarEnabled(category)) {
                 continue;
             }
-            double x = Mth.lerp(partialTick, living.xo, living.getX());
-            double y = Mth.lerp(partialTick, living.yo, living.getY());
-            double z = Mth.lerp(partialTick, living.zo, living.getZ());
-            if (eye.distanceToSqr(x, y, z) > RANGE * RANGE) {
+            if (eye.distanceToSqr(anchorOf(living, partialTick)) > RANGE * RANGE) {
                 continue;
             }
             found.add(living);
         }
 
         if (found.size() > MAX_BARS) {
-            found.sort(Comparator.comparingDouble(entity -> eye.distanceToSqr(
-                    Mth.lerp(partialTick, entity.xo, entity.getX()),
-                    Mth.lerp(partialTick, entity.yo, entity.getY()),
-                    Mth.lerp(partialTick, entity.zo, entity.getZ()))));
+            found.sort(Comparator.comparingDouble(
+                    entity -> eye.distanceToSqr(anchorOf(entity, partialTick))));
             return new ArrayList<>(found.subList(0, MAX_BARS));
         }
         return found;

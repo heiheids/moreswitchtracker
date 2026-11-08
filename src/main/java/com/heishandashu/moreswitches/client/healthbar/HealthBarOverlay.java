@@ -4,9 +4,10 @@ import com.heishandashu.moreswitches.MoreSwitchesMod;
 import com.heishandashu.moreswitches.config.HealthBarCategory;
 import com.heishandashu.moreswitches.config.HealthBarDisplay;
 import com.heishandashu.moreswitches.config.ModSettings;
-import com.heishandashu.tracker.client.render.ScreenProjection;
 import com.heishandashu.tracker.compat.ClientEvents;
+import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.PoseStack;
+import net.minecraft.client.Camera;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
@@ -16,6 +17,9 @@ import net.minecraft.util.Mth;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.phys.Vec3;
+import org.joml.Matrix4f;
+import org.joml.Quaternionf;
+import org.joml.Vector4f;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -25,13 +29,11 @@ import java.util.Locale;
 /**
  * 血条 / overhead health bar for the 1.21.1 build.
  *
- * <p>Same behaviour as the 26.3 sibling: the bar has a size in blocks and is converted to pixels
- * with the projection's own pinhole maths, so it shrinks with distance; entity positions and the
- * camera are interpolated with the frame's partial tick and placed on sub-pixel offsets, so a
- * moving creature does not make the bar stutter.</p>
- *
- * <p>1.21.1 has no {@code HudElementRegistry}, so the pass is registered through the tracker's
- * {@link ClientEvents} HUD hook, which hands over the partial tick directly.</p>
+ * <p>The bar has to land on the creature exactly, so it is projected with the same matrix the world
+ * was drawn with instead of a pinhole rebuilt from the player's eye. Rebuilding it ignores view
+ * bobbing and FOV effects, which is why the bar used to drift away from the creature while the
+ * player walked. 1.21.1 has no public "current projection" accessor, so the world pass captures
+ * {@link RenderSystem#getProjectionMatrix()} once per frame and the HUD pass reuses it.</p>
  */
 public final class HealthBarOverlay {
 
@@ -58,20 +60,30 @@ public final class HealthBarOverlay {
     private static final int GLOSS_COLOR = 0x55FFFFFF;
     private static final int TEXT_COLOR = 0xFFFFFFFF;
 
+    /** The world projection captured during the level pass, reused by the HUD pass. */
+    private static final Matrix4f WORLD_PROJECTION = new Matrix4f();
+
     private static boolean warned;
     private static boolean reported;
+    private static boolean hasProjection;
 
     private HealthBarOverlay() {
     }
 
     public static void register() {
+        ClientEvents.addWorldPass((pose, buffers) -> captureProjection());
         ClientEvents.addHudPass(HealthBarOverlay::render);
+    }
+
+    private static void captureProjection() {
+        WORLD_PROJECTION.set(RenderSystem.getProjectionMatrix());
+        hasProjection = true;
     }
 
     private static void render(GuiGraphics graphics, float partialTick) {
         ModSettings settings = ModSettings.get();
         HealthBarDisplay display = settings.healthBarDisplay();
-        if (display == HealthBarDisplay.OFF) {
+        if (display == HealthBarDisplay.OFF || !hasProjection) {
             return;
         }
 
@@ -109,36 +121,35 @@ public final class HealthBarOverlay {
 
         int width = minecraft.getWindow().getGuiScaledWidth();
         int height = minecraft.getWindow().getGuiScaledHeight();
-        Vec3 eye = self.getEyePosition(partialTick);
-        Vec3 forward = self.getViewVector(partialTick);
-        double fov = minecraft.options.fov().get();
+        Camera camera = minecraft.gameRenderer.getMainCamera();
+        Vec3 eye = camera.getPosition();
+        Matrix4f viewProjection = new Matrix4f(WORLD_PROJECTION)
+                .mul(new Matrix4f().rotation(new Quaternionf(camera.rotation()).conjugate()));
+
         Font font = minecraft.font;
         float sizeFactor = settings.healthBarSize().factor();
         float worldWidth = WORLD_BAR_WIDTH * sizeFactor;
-        double tanHalfFov = Math.tan(Math.toRadians(fov) / 2.0);
+        // The captured matrix already carries the real FOV (sprint, underwater, effects), and its
+        // [1][1] element is 1/tan(fov/2), so the size scaling needs no second source of truth.
+        double tanHalfFov = 1.0 / Math.max(1.0E-4, WORLD_PROJECTION.m11());
 
+        float[] screen = new float[2];
         for (LivingEntity entity : targets) {
-            double anchorX = Mth.lerp(partialTick, entity.xo, entity.getX());
-            double anchorY = Mth.lerp(partialTick, entity.yo, entity.getY())
-                    + entity.getBbHeight() + HEAD_GAP;
-            double anchorZ = Mth.lerp(partialTick, entity.zo, entity.getZ());
-            Vec3 anchor = new Vec3(anchorX, anchorY, anchorZ);
-
-            ScreenProjection.Projected projected =
-                    ScreenProjection.project(eye, forward, fov, width, height, anchor, 0.0);
-            if (!projected.onScreen() || projected.distance() > RANGE) {
+            Vec3 anchor = anchorOf(entity, partialTick);
+            double distance = eye.distanceTo(anchor);
+            if (distance > RANGE || !project(viewProjection, eye, anchor, width, height, screen)) {
                 continue;
             }
 
-            double pixelsPerBlock = (height / 2.0) / (tanHalfFov * Math.max(0.25, projected.distance()));
+            double pixelsPerBlock = (height / 2.0) / (tanHalfFov * Math.max(0.25, distance));
             float barWidth = clamp((float) (worldWidth * pixelsPerBlock),
                     MIN_BAR_WIDTH, MAX_BAR_WIDTH);
             float barHeight = clamp(barWidth * BAR_ASPECT, MIN_BAR_HEIGHT, MAX_BAR_HEIGHT);
             float textScale = clamp((float) (worldWidth * TEXT_ASPECT * pixelsPerBlock
                     / Math.max(1, font.lineHeight)), MIN_TEXT_SCALE, MAX_TEXT_SCALE);
 
-            float exactX = (float) projected.screenX();
-            float exactY = (float) projected.screenY();
+            float exactX = screen[0];
+            float exactY = screen[1];
             int baseX = (int) Math.floor(exactX);
             int baseY = (int) Math.floor(exactY);
 
@@ -160,6 +171,33 @@ public final class HealthBarOverlay {
 
             pose.popPose();
         }
+    }
+
+    private static Vec3 anchorOf(LivingEntity entity, float partialTick) {
+        return new Vec3(
+                Mth.lerp(partialTick, entity.xo, entity.getX()),
+                Mth.lerp(partialTick, entity.yo, entity.getY()) + entity.getBbHeight() + HEAD_GAP,
+                Mth.lerp(partialTick, entity.zo, entity.getZ()));
+    }
+
+    private static boolean project(Matrix4f viewProjection, Vec3 eye, Vec3 point,
+                                   int width, int height, float[] out) {
+        Vector4f clip = viewProjection.transform(new Vector4f(
+                (float) (point.x - eye.x),
+                (float) (point.y - eye.y),
+                (float) (point.z - eye.z),
+                1.0F));
+        if (clip.w <= 1.0E-4F) {
+            return false;
+        }
+        float ndcX = clip.x / clip.w;
+        float ndcY = clip.y / clip.w;
+        if (Math.abs(ndcX) > 1.0F || Math.abs(ndcY) > 1.0F) {
+            return false;
+        }
+        out[0] = (ndcX * 0.5F + 0.5F) * width;
+        out[1] = (0.5F - ndcY * 0.5F) * height;
+        return true;
     }
 
     private static void drawBar(GuiGraphics graphics, LivingEntity entity,
@@ -208,7 +246,7 @@ public final class HealthBarOverlay {
 
     private static List<LivingEntity> collect(ClientLevel level, LocalPlayer self,
                                               ModSettings settings, float partialTick) {
-        Vec3 eye = self.getEyePosition(partialTick);
+        Vec3 eye = Minecraft.getInstance().gameRenderer.getMainCamera().getPosition();
         List<LivingEntity> found = new ArrayList<>();
 
         for (Entity entity : level.entitiesForRendering()) {
@@ -222,20 +260,15 @@ public final class HealthBarOverlay {
             if (category == null || !settings.isHealthBarEnabled(category)) {
                 continue;
             }
-            double x = Mth.lerp(partialTick, living.xo, living.getX());
-            double y = Mth.lerp(partialTick, living.yo, living.getY());
-            double z = Mth.lerp(partialTick, living.zo, living.getZ());
-            if (eye.distanceToSqr(x, y, z) > RANGE * RANGE) {
+            if (eye.distanceToSqr(anchorOf(living, partialTick)) > RANGE * RANGE) {
                 continue;
             }
             found.add(living);
         }
 
         if (found.size() > MAX_BARS) {
-            found.sort(Comparator.comparingDouble(entity -> eye.distanceToSqr(
-                    Mth.lerp(partialTick, entity.xo, entity.getX()),
-                    Mth.lerp(partialTick, entity.yo, entity.getY()),
-                    Mth.lerp(partialTick, entity.zo, entity.getZ()))));
+            found.sort(Comparator.comparingDouble(
+                    entity -> eye.distanceToSqr(anchorOf(entity, partialTick))));
             return new ArrayList<>(found.subList(0, MAX_BARS));
         }
         return found;
