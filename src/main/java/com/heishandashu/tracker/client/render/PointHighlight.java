@@ -43,7 +43,11 @@ public final class PointHighlight {
                              float red, float green, float blue, float alpha,
                              double boxHalf) {
         LocalPlayer player = Minecraft.getInstance().player;
-        Vec3 eye = player == null ? target.add(0.0, 0.0, 8.0) : player.getEyePosition();
+        // The camera's interpolated position, not the player's tick position: anchoring on the
+        // latter makes every world marker stutter once per tick while the player walks.
+        Vec3 eye = player == null
+                ? target.add(0.0, 0.0, 8.0)
+                : Minecraft.getInstance().gameRenderer.getMainCamera().getPosition();
         double distance = eye.distanceTo(target);
 
         WorldPainter.Batch batch = WorldPainter.beginThroughWalls(buffers, pose);

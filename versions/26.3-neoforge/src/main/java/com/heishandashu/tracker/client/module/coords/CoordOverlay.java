@@ -2,7 +2,9 @@ package com.heishandashu.tracker.client.module.coords;
 
 import com.heishandashu.tracker.TrackerMod;
 import com.heishandashu.tracker.client.compat.TrackerClientEvents;
+import com.heishandashu.tracker.client.render.CameraProjection;
 import com.heishandashu.tracker.client.render.EdgeArrow;
+import com.heishandashu.tracker.client.render.HudMarker;
 import com.heishandashu.tracker.client.render.ScreenProjection;
 import com.heishandashu.tracker.client.render.TargetIcon;
 import com.heishandashu.tracker.module.coords.CustomCoordTrackingModule;
@@ -41,6 +43,10 @@ public final class CoordOverlay {
     private static final double ARROW_MARGIN = 18.0;
     /** Vertical offset of a corner bracket at the exact coordinate, in blocks. */
     private static final double BOX_HALF = 0.6;
+    /** Pixels between the reticle centre and the caption above it. */
+    private static final int LABEL_GAP = 5;
+    /** Half-size of the HUD marker square, in GUI pixels. */
+    private static final int MARK_RADIUS = 7;
 
     private static boolean warned;
 
@@ -94,21 +100,7 @@ public final class CoordOverlay {
                 target.x + BOX_HALF, target.y + BOX_HALF, target.z + BOX_HALF);
         Gizmos.cuboid(box, GizmoStyle.stroke(MARK_COLOR, 2.0f)).setAlwaysOnTop();
 
-        Vec3 drawAt = target;
-        if (distance > CustomCoordTrackingModule.NEAR_LIMIT) {
-            // Beyond the far plane a world gizmo is simply clipped, so anchor the reticle on the
-            // view direction instead: same screen position, unchanged apparent size, never culled.
-            Vec3 direction = target.subtract(eye).scale(1.0 / Math.max(distance, 1.0E-4));
-            drawAt = eye.add(direction.scale(CustomCoordTrackingModule.ANCHOR_DISTANCE));
-        }
 
-        double radius = TargetIcon.screenConstantRadius(drawAt, eye, SCREEN_FACTOR);
-        TargetIcon.draw(drawAt, radius, eye, MARK_COLOR);
-
-        String caption = point.pretty() + "  " + distanceText(distance);
-        Gizmos.billboardText(caption, drawAt.add(0.0, radius * 1.9, 0.0),
-                        TextGizmo.Style.forColorAndCentered(TEXT_COLOR).withScale(0.85f))
-                .setAlwaysOnTop();
     }
 
     private static void renderArrow(GuiGraphicsExtractor graphics, DeltaTracker delta) {
@@ -120,21 +112,37 @@ public final class CoordOverlay {
             return;
         }
 
-        Vec3 eye = self.getEyePosition();
+        Vec3 eye = CameraProjection.eye(minecraft);
         Vec3 target = new Vec3(point.x(), point.y(), point.z());
+        double distance = eye.distanceTo(target);
         int width = minecraft.getWindow().getGuiScaledWidth();
         int height = minecraft.getWindow().getGuiScaledHeight();
+        String caption = point.pretty() + "  " + distanceText(distance);
 
-        ScreenProjection.Projected projected = ScreenProjection.project(eye, self.getViewVector(1.0f),
-                minecraft.options.fov().get(), width, height, target, ARROW_MARGIN);
-        if (projected.onScreen()) {
-            return; // the world-space mark is already visible
+        // On screen the label is placed by hand, a fixed gap above the reticle. A world-space
+        // billboard lands beside the mark rather than above it, which is what made the caption
+        // sit across the icon.
+        float[] screen = new float[2];
+        if (CameraProjection.project(minecraft, target, width, height, screen)) {
+            int centerX = Math.round(screen[0]);
+            int centerY = Math.round(screen[1]);
+            HudMarker.mark(graphics, centerX, centerY, MARK_RADIUS, MARK_COLOR);
+            HudMarker.centeredText(graphics, minecraft.font, caption, centerX,
+                    centerY - MARK_RADIUS - LABEL_GAP - minecraft.font.lineHeight,
+                    width, height, TEXT_COLOR);
+            return;
         }
 
+        // Off screen: an edge arrow, which is the only thing that can point at it.
+        ScreenProjection.Projected projected = ScreenProjection.project(eye, self.getViewVector(1.0f),
+                minecraft.options.fov().get(), width, height, target, ARROW_MARGIN);
         EdgeArrow.draw(graphics, minecraft.font, width, height,
                 projected.screenX(), projected.screenY(),
-                projected.dirX(), projected.dirY(),
-                point.pretty() + "  " + distanceText(projected.distance()), MARK_COLOR);
+                projected.dirX(), projected.dirY(), caption, MARK_COLOR);
+    }
+
+    private static int clamp(int value, int min, int max) {
+        return value < min ? min : Math.min(value, max);
     }
 
     private static String distanceText(double distance) {

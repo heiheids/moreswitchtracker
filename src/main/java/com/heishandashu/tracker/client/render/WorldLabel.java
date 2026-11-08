@@ -23,6 +23,12 @@ public final class WorldLabel {
      */
     private static final int BOTTOM_RESERVED = 68;
 
+    /** Screen-constant reticle radius factor, matching {@code PointHighlight.SCREEN_FACTOR}. */
+    private static final double MARK_SCREEN_FACTOR = 0.035;
+
+    /** Gap between the top of the reticle and the bottom of the label, in GUI pixels. */
+    private static final int LABEL_GAP = 4;
+
     private WorldLabel() {
     }
 
@@ -44,7 +50,15 @@ public final class WorldLabel {
         }
         int textWidth = minecraft.font.width(text);
         int x = (int) Math.round(projected.screenX()) - textWidth / 2;
-        int y = (int) Math.round(projected.screenY());
+
+        // The label used to start at the target itself, so it was drawn straight across the
+        // reticle. Lift it by the reticle's on-screen radius plus the text height instead, which
+        // puts the caption just above the mark at any FOV or window size.
+        double tanHalfFov = Math.tan(Math.toRadians(fov) / 2.0);
+        int markRadius = (int) Math.round(MARK_SCREEN_FACTOR * (height / 2.0)
+                / Math.max(1.0E-4, tanHalfFov));
+        int y = (int) Math.round(projected.screenY())
+                - markRadius - LABEL_GAP - minecraft.font.lineHeight;
         // Keep it inside the screen so a label near the edge is not clipped away, and keep it
         // clear of the bottom strip: a label drawn over the hotbar and health is unreadable and
         // looks broken (the target is simply below the crosshair, which is normal).

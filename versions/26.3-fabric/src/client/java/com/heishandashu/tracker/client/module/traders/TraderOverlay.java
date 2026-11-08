@@ -1,29 +1,31 @@
 package com.heishandashu.tracker.client.module.traders;
 
 import com.heishandashu.tracker.TrackerMod;
+import com.heishandashu.tracker.client.render.CameraProjection;
+import com.heishandashu.tracker.client.render.HudMarker;
 import com.heishandashu.tracker.client.render.ScreenProjection;
-import com.heishandashu.tracker.client.render.TargetIcon;
 import com.heishandashu.tracker.module.ModuleIds;
 import com.heishandashu.tracker.module.TrackerModules;
 import com.heishandashu.tracker.module.traders.WanderingTraderTrackingModule;
 import com.heishandashu.tracker.net.TraderNetworking;
 import net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry;
-import net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderEvents;
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.player.LocalPlayer;
-import net.minecraft.gizmos.Gizmos;
-import net.minecraft.gizmos.TextGizmo;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.phys.Vec3;
 
 /**
- * Draws the wandering trader: the despawn countdown above its head, and a reticle when the player
+ * Draws the wandering trader: the despawn countdown above its head, and a marker when the player
  * highlighted it.
+ *
+ * <p>Everything is drawn on the HUD from the camera matrix rather than in the world. World-space
+ * markers are placed from the player's tick position, which only changes twenty times a second, so
+ * they stutter badly while the player walks; the HUD path the health bar uses does not.</p>
  *
  * <p>The overhead countdown shows for any tracked trader within
  * {@link WanderingTraderTrackingModule#OVERHEAD_RANGE} blocks, whether or not a highlight is
@@ -38,11 +40,15 @@ public final class TraderOverlay {
     private static final int COUNTDOWN_COLOR = 0xFFFFE9A8;
     private static final int MARK_COLOR = 0xFFFFC24A;
     private static final int DISTANCE_COLOR = 0xFFFFE6B0;
-    private static final double SCREEN_FACTOR = 0.035;
-    private static final double NEAR_LIMIT = 24.0;
-    private static final double ANCHOR_DISTANCE = 12.0;
     private static final double ARROW_MARGIN = 18.0;
     private static final int ARROW_SIZE = 7;
+
+    /** Marker height above the trader's feet, in blocks. */
+    private static final double BODY_HEIGHT = 1.2;
+    /** Half-size of the HUD marker square, in GUI pixels. */
+    private static final int MARK_RADIUS = 7;
+    /** Gap between the marker and the first label line, in GUI pixels. */
+    private static final int LABEL_GAP = 5;
 
     private static boolean warned;
 
@@ -50,99 +56,10 @@ public final class TraderOverlay {
     }
 
     public static void register() {
-        LevelRenderEvents.BEFORE_GIZMOS.register(context -> {
-            if (!enabled()) {
-                return;
-            }
-            Minecraft minecraft = Minecraft.getInstance();
-            ClientLevel level = minecraft.level;
-            LocalPlayer self = minecraft.player;
-            if (level == null || self == null) {
-                return;
-            }
-            try {
-                String dimension = level.dimension().identifier().toString();
-                Vec3 eye = self.getEyePosition();
-                Vec3 view = self.getViewVector(1.0f);
-
-                for (TraderNetworking.TraderSnap snap : TraderState.traders()) {
-                    if (!snap.dimension().equals(dimension)) {
-                        continue;
-                    }
-                    double distance = TraderState.distance(snap);
-                    Vec3 where = TraderState.position(snap);
-                    boolean highlighted = TraderState.isHighlighted(snap.uuid());
-
-                    // One anchor and one line spacing for both labels, so the despawn countdown and
-                    // the highlight countdown stack instead of landing on the same spot.
-                    // Close by they use fixed world offsets above the head; far away the marker is
-                    // anchored along the view direction and the offsets scale with it, which keeps
-                    // the on-screen spacing constant too.
-                    Vec3 drawAt;
-                    double lineOffset;
-                    double lineStep;
-                    if (distance <= NEAR_LIMIT) {
-                        drawAt = where;
-                        lineOffset = 1.0;
-                        lineStep = 0.55;
-                    } else {
-                        Vec3 direction = where.subtract(eye);
-                        double length = direction.length();
-                        if (length < 0.05) {
-                            continue;
-                        }
-                        direction = direction.scale(1.0 / length);
-                        if (direction.dot(view) <= 0.05) {
-                            continue; // behind the player: nothing sensible to draw
-                        }
-                        drawAt = eye.add(direction.scale(ANCHOR_DISTANCE));
-                        double anchorRadius = TargetIcon.screenConstantRadius(drawAt, eye, SCREEN_FACTOR);
-                        lineOffset = anchorRadius * 1.9;
-                        lineStep = anchorRadius;
-                    }
-
-                    // 1) the despawn countdown, for any tracked trader the player is close to --
-                    //    whether or not a highlight is running
-                    if (distance <= WanderingTraderTrackingModule.OVERHEAD_RANGE) {
-                        // A countdown of zero does not mean "about to vanish": it means this
-                        // trader will never despawn (spawn egg, /summon, or a saved trader).
-                        String countdown = snap.despawnTicks() > 0
-                                ? Component.translatable("tracker.trader.countdown",
-                                        TraderState.clock(snap.despawnTicks())).getString()
-                                : Component.translatable("tracker.trader.never_despawns").getString();
-                        Gizmos.billboardText(countdown, drawAt.add(0.0, lineOffset, 0.0),
-                                        TextGizmo.Style.forColorAndCentered(COUNTDOWN_COLOR).withScale(0.8f))
-                                .setAlwaysOnTop();
-                        lineOffset += lineStep;
-                    }
-
-                    // 2) only when highlighted: the reticle plus its own countdown, one line above
-                    if (!highlighted) {
-                        continue;
-                    }
-                    double radius = TargetIcon.screenConstantRadius(drawAt, eye, SCREEN_FACTOR);
-                    TargetIcon.draw(drawAt, radius, eye, MARK_COLOR);
-
-                    String caption = Component.translatable("tracker.players.distance",
-                            String.format("%.0f", distance)).getString()
-                            + "  " + TraderState.clock(TraderState.highlightRemaining(snap.uuid()));
-                    Gizmos.billboardText(caption, drawAt.add(0.0, lineOffset, 0.0),
-                                    TextGizmo.Style.forColorAndCentered(DISTANCE_COLOR).withScale(0.85f))
-                            .setAlwaysOnTop();
-                }
-            } catch (Throwable t) {
-                if (!warned) {
-                    warned = true;
-                    TrackerMod.LOGGER.warn("[tracker] trader overlay could not draw", t);
-                }
-            }
-        });
-
-        HudElementRegistry.addLast(HUD_ID, TraderOverlay::renderArrows);
+        HudElementRegistry.addLast(HUD_ID, TraderOverlay::render);
     }
 
-    /** Edge arrows for a highlighted trader that is off screen or behind the player. */
-    private static void renderArrows(GuiGraphicsExtractor graphics, DeltaTracker delta) {
+    private static void render(GuiGraphicsExtractor graphics, DeltaTracker delta) {
         if (!enabled()) {
             return;
         }
@@ -152,33 +69,90 @@ public final class TraderOverlay {
         if (self == null || level == null) {
             return;
         }
+
+        try {
+            draw(graphics, minecraft, self, level);
+        } catch (Throwable t) {
+            if (!warned) {
+                warned = true;
+                TrackerMod.LOGGER.warn("[tracker] trader overlay could not draw", t);
+            }
+        }
+    }
+
+    private static void draw(GuiGraphicsExtractor graphics, Minecraft minecraft,
+                             LocalPlayer self, ClientLevel level) {
         int width = minecraft.getWindow().getGuiScaledWidth();
         int height = minecraft.getWindow().getGuiScaledHeight();
         Font font = minecraft.font;
-        Vec3 eye = self.getEyePosition();
-        Vec3 forward = self.getViewVector(1.0f);
-        double fov = minecraft.options.fov().get();
+        Vec3 eye = CameraProjection.eye(minecraft);
         String dimension = level.dimension().identifier().toString();
+        float[] screen = new float[2];
 
         for (TraderNetworking.TraderSnap snap : TraderState.traders()) {
-            if (!snap.dimension().equals(dimension) || !TraderState.isHighlighted(snap.uuid())) {
+            if (!snap.dimension().equals(dimension)) {
                 continue;
             }
-            ScreenProjection.Projected projected = ScreenProjection.project(
-                    eye, forward, fov, width, height, TraderState.position(snap), ARROW_MARGIN);
-            if (projected.onScreen()) {
+            Vec3 where = TraderState.position(snap);
+            double distance = eye.distanceTo(where);
+            boolean highlighted = TraderState.isHighlighted(snap.uuid());
+            Vec3 anchor = where.add(0.0, BODY_HEIGHT, 0.0);
+
+            if (!CameraProjection.project(minecraft, anchor, width, height, screen)) {
+                if (highlighted) {
+                    drawEdgeArrow(graphics, minecraft, self, where, width, height, distance);
+                }
                 continue;
             }
-            drawArrow(graphics, projected.screenX(), projected.screenY(), projected.dirX(), projected.dirY());
-            String label = Component.translatable("tracker.players.distance",
-                    String.format("%.0f", projected.distance())).getString();
-            int textWidth = font.width(label);
-            int x = Math.max(2, Math.min(width - textWidth - 2,
-                    (int) Math.round(projected.screenX()) - textWidth / 2));
-            int base = (int) Math.round(projected.screenY());
-            int y = Math.max(2, Math.min(height - 10, base + (base > height / 2 ? -14 : 10)));
-            graphics.text(font, Component.literal(label), x, y, DISTANCE_COLOR);
+
+            int centerX = Math.round(screen[0]);
+            int centerY = Math.round(screen[1]);
+            HudMarker.mark(graphics, centerX, centerY, MARK_RADIUS, MARK_COLOR);
+
+            int lineY = centerY - MARK_RADIUS - LABEL_GAP - font.lineHeight;
+
+            // A countdown of zero does not mean "about to vanish": it means this trader will never
+            // despawn (spawn egg, /summon, or a saved trader).
+            if (distance <= WanderingTraderTrackingModule.OVERHEAD_RANGE) {
+                String countdown = snap.despawnTicks() > 0
+                        ? Component.translatable("tracker.trader.countdown",
+                                TraderState.clock(snap.despawnTicks())).getString()
+                        : Component.translatable("tracker.trader.never_despawns").getString();
+                HudMarker.centeredText(graphics, font, countdown, centerX, lineY,
+                        width, height, COUNTDOWN_COLOR);
+                lineY -= font.lineHeight + 1;
+            }
+
+            if (highlighted) {
+                String caption = Component.translatable("tracker.players.distance",
+                        String.format("%.0f", distance)).getString()
+                        + "  " + TraderState.clock(TraderState.highlightRemaining(snap.uuid()));
+                HudMarker.centeredText(graphics, font, caption, centerX, lineY,
+                        width, height, DISTANCE_COLOR);
+            }
         }
+    }
+
+    /** Edge arrow for a highlighted trader that is off screen or behind the player. */
+    private static void drawEdgeArrow(GuiGraphicsExtractor graphics, Minecraft minecraft,
+                                      LocalPlayer self, Vec3 where, int width, int height,
+                                      double distance) {
+        ScreenProjection.Projected projected = ScreenProjection.project(
+                CameraProjection.eye(minecraft), self.getViewVector(1.0f),
+                minecraft.options.fov().get(), width, height, where, ARROW_MARGIN);
+        if (projected.onScreen()) {
+            return;
+        }
+        drawArrow(graphics, projected.screenX(), projected.screenY(),
+                projected.dirX(), projected.dirY());
+        String label = Component.translatable("tracker.players.distance",
+                String.format("%.0f", distance)).getString();
+        int textWidth = minecraft.font.width(label);
+        int x = Math.max(2, Math.min(width - textWidth - 2,
+                (int) Math.round(projected.screenX()) - textWidth / 2));
+        int base = (int) Math.round(projected.screenY());
+        int y = Math.max(2, Math.min(height - 10, base + (base > height / 2 ? -14 : 10)));
+        graphics.text(minecraft.font, Component.literal(label), x, y, DISTANCE_COLOR);
     }
 
     private static void drawArrow(GuiGraphicsExtractor graphics, double x, double y,
