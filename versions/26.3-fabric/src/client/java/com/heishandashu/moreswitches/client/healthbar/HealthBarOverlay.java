@@ -4,6 +4,7 @@ import com.heishandashu.moreswitches.MoreSwitchesMod;
 import com.heishandashu.moreswitches.config.HealthBarCategory;
 import com.heishandashu.moreswitches.config.HealthBarDisplay;
 import com.heishandashu.moreswitches.config.ModSettings;
+import com.heishandashu.tracker.client.diagnostic.RenderWatchdog;
 import net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry;
 import net.minecraft.client.Camera;
 import net.minecraft.client.DeltaTracker;
@@ -83,6 +84,7 @@ public final class HealthBarOverlay {
     }
 
     private static void render(GuiGraphicsExtractor graphics, DeltaTracker delta) {
+        RenderWatchdog.beat();
         ModSettings settings = ModSettings.get();
         HealthBarDisplay display = settings.healthBarDisplay();
         if (display == HealthBarDisplay.OFF) {

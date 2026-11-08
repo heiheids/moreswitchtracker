@@ -4,6 +4,7 @@ import com.heishandashu.moreswitches.MoreSwitchesMod;
 import com.heishandashu.moreswitches.config.HealthBarCategory;
 import com.heishandashu.moreswitches.config.HealthBarDisplay;
 import com.heishandashu.moreswitches.config.ModSettings;
+import com.heishandashu.tracker.client.diagnostic.RenderWatchdog;
 import com.heishandashu.tracker.compat.ClientEvents;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.PoseStack;
@@ -81,6 +82,7 @@ public final class HealthBarOverlay {
     }
 
     private static void render(GuiGraphics graphics, float partialTick) {
+        RenderWatchdog.beat();
         ModSettings settings = ModSettings.get();
         HealthBarDisplay display = settings.healthBarDisplay();
         if (display == HealthBarDisplay.OFF || !hasProjection) {
