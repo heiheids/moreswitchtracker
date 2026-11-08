@@ -54,6 +54,14 @@ public final class ModSettings {
     /** Free GUI scale from the 自由界面 page; 0 means "use vanilla's own scale". */
     private float guiScale;
 
+    /** 血条 page: what to draw, how big, and which kinds of creature get one. */
+    private HealthBarDisplay healthBarDisplay = HealthBarDisplay.OFF;
+    private HealthBarSize healthBarSize = HealthBarSize.MEDIUM;
+    private boolean healthBarMonsters = true;
+    private boolean healthBarVillagers = true;
+    private boolean healthBarGolems = true;
+    private boolean healthBarAnimals = true;
+
     private ModSettings() {
     }
 
@@ -97,6 +105,9 @@ public final class ModSettings {
             }
             if (root.has("guiScale") && root.get("guiScale").isJsonPrimitive()) {
                 settings.guiScale = normaliseGuiScale(root.get("guiScale").getAsFloat());
+            }
+            if (root.has("healthBar") && root.get("healthBar").isJsonObject()) {
+                settings.readHealthBar(root.getAsJsonObject("healthBar"));
             }
         } catch (Exception e) {
             // A broken file must not stop the game: report it with the path, keep the defaults,
@@ -184,6 +195,72 @@ public final class ModSettings {
     }
 
     /** Writes the file; failures are logged, never thrown at the caller (this runs from the UI thread). */
+    /** Reads the {@code healthBar} object; every key is optional and keeps its default. */
+    private void readHealthBar(JsonObject stored) {
+        if (stored.has("display") && stored.get("display").isJsonPrimitive()) {
+            this.healthBarDisplay = HealthBarDisplay.byId(stored.get("display").getAsString());
+        }
+        if (stored.has("size") && stored.get("size").isJsonPrimitive()) {
+            this.healthBarSize = HealthBarSize.byId(stored.get("size").getAsString());
+        }
+        this.healthBarMonsters = readBoolean(stored, "monsters", this.healthBarMonsters);
+        this.healthBarVillagers = readBoolean(stored, "villagers", this.healthBarVillagers);
+        this.healthBarGolems = readBoolean(stored, "golems", this.healthBarGolems);
+        this.healthBarAnimals = readBoolean(stored, "animals", this.healthBarAnimals);
+    }
+
+    private static boolean readBoolean(JsonObject stored, String key, boolean fallback) {
+        return stored.has(key) && stored.get(key).isJsonPrimitive()
+                ? stored.get(key).getAsBoolean()
+                : fallback;
+    }
+
+    public HealthBarDisplay healthBarDisplay() {
+        return this.healthBarDisplay;
+    }
+
+    public void setHealthBarDisplay(HealthBarDisplay value) {
+        HealthBarDisplay normalised = value == null ? HealthBarDisplay.OFF : value;
+        if (normalised != this.healthBarDisplay) {
+            this.healthBarDisplay = normalised;
+            save();
+        }
+    }
+
+    public HealthBarSize healthBarSize() {
+        return this.healthBarSize;
+    }
+
+    public void setHealthBarSize(HealthBarSize value) {
+        HealthBarSize normalised = value == null ? HealthBarSize.MEDIUM : value;
+        if (normalised != this.healthBarSize) {
+            this.healthBarSize = normalised;
+            save();
+        }
+    }
+
+    public boolean isHealthBarEnabled(HealthBarCategory category) {
+        return switch (category) {
+            case MONSTER -> this.healthBarMonsters;
+            case VILLAGER -> this.healthBarVillagers;
+            case GOLEM -> this.healthBarGolems;
+            case ANIMAL -> this.healthBarAnimals;
+        };
+    }
+
+    public void setHealthBarEnabled(HealthBarCategory category, boolean enabled) {
+        boolean previous = isHealthBarEnabled(category);
+        switch (category) {
+            case MONSTER -> this.healthBarMonsters = enabled;
+            case VILLAGER -> this.healthBarVillagers = enabled;
+            case GOLEM -> this.healthBarGolems = enabled;
+            case ANIMAL -> this.healthBarAnimals = enabled;
+        }
+        if (previous != enabled) {
+            save();
+        }
+    }
+
     public void save() {
         Path path = file();
         Path temporary = path.resolveSibling(path.getFileName() + ".tmp");
@@ -192,6 +269,14 @@ public final class ModSettings {
         if (this.guiScale > 0.0F) {
             root.addProperty("guiScale", this.guiScale);
         }
+        JsonObject healthBar = new JsonObject();
+        healthBar.addProperty("display", this.healthBarDisplay.id());
+        healthBar.addProperty("size", this.healthBarSize.id());
+        healthBar.addProperty("monsters", this.healthBarMonsters);
+        healthBar.addProperty("villagers", this.healthBarVillagers);
+        healthBar.addProperty("golems", this.healthBarGolems);
+        healthBar.addProperty("animals", this.healthBarAnimals);
+        root.add("healthBar", healthBar);
         JsonObject stored = new JsonObject();
         for (Map.Entry<String, Boolean> entry : this.switches.entrySet()) {
             stored.addProperty(entry.getKey(), entry.getValue());

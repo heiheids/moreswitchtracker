@@ -4,12 +4,12 @@
 
 # 更多开关追踪 · More Switches Tracker
 
-**16 个实用开关 + 12 个追踪模块 + 无级界面尺寸，一个窗口三个选项卡**
+**16 个实用开关 + 12 个追踪模块 + 无级界面尺寸 + 头顶血条，一个窗口四个选项卡**
 
 Minecraft 1.21.1 / 26.3 · Fabric &amp; NeoForge · 中文 / English
 
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-1.1.0-brightgreen.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-1.2.0-brightgreen.svg)](CHANGELOG.md)
 
 [中文](README.md) · [English](README_EN.md)
 
@@ -29,6 +29,7 @@ Minecraft 1.21.1 / 26.3 · Fabric &amp; NeoForge · 中文 / English
 - [16 个实用开关](#16-个实用开关)
 - [12 个追踪模块](#12-个追踪模块)
 - [追踪器指令](#追踪器指令)
+- [血条（1.2.0 新增）](#血条10-20-新增)
 - [语言](#语言)
 - [配置文件](#配置文件)
 - [兼容性](#兼容性)
@@ -49,7 +50,7 @@ Minecraft 1.21.1 / 26.3 · Fabric &amp; NeoForge · 中文 / English
 | **更多开关功能** | 16 个客户端 / 服务端实用开关 |
 | **追踪器** | 12 个实体、掉落物、状态追踪模块 |
 
-合并后只保留 **J** 一个按键：打开同一个窗口，用顶部的三个选项卡切换。两边的功能、默认值、配置文件和指令全部保留 —— 不是重写，也不是把所有控件硬塞进一个巨型界面。
+合并后只保留 **J** 一个按键：打开同一个窗口，用顶部的四个选项卡切换。两边的功能、默认值、配置文件和指令全部保留 —— 不是重写，也不是把所有控件硬塞进一个巨型界面。
 
 <p align="center">
   <img src="docs/screenshots/tab-switches.png" width="49%" alt="更多开关选项卡">
@@ -217,6 +218,26 @@ Minecraft 1.21.1 / 26.3 · Fabric &amp; NeoForge · 中文 / English
 聊天里的坐标和编号可以直接点击执行对应指令。
 
 ---
+
+
+## 血条（1.2.0 新增）
+
+<p align="center">
+  <img src="docs/screenshots/health-bars.png" width="70%" alt="血条选项卡">
+</p>
+
+生物头顶显示一条简单的红色血条，上方写当前血量与总血量。
+
+| 设置 | 选项 |
+|---|---|
+| **显示内容** | 全部显示 / 仅血条 / 仅数字 / 关闭 |
+| **尺寸** | 大 / 中 / 小，血条与文字同时缩放 |
+| **分类** | 怪物 / 村民 / 傀儡 / 动物，四类独立开关 |
+
+- 最远 48 格，同屏最多 48 个，超出的不画。
+- 血条画在 HUD 上而不是世界里，所以不随距离变大变小，也不会因为界面倍率而变糊。代价是被墙挡住也能看见。
+- 分类规则：名字带 `golem` 的归傀儡，`Enemy` 归怪物，带 `villager`/`trader` 的归村民，其余 `Animal` 归动物。僵尸村民归怪物。
+- 默认关闭；设置保存在 `config/moreswitches.json` 的 `healthBar` 下。
 
 ## 语言
 

@@ -4,6 +4,7 @@ import com.heishandashu.moreswitches.MoreSwitchesMod;
 import com.heishandashu.moreswitches.client.feature.ClientFeatures;
 import com.heishandashu.moreswitches.client.gui.FreeGuiScale;
 import com.heishandashu.moreswitches.client.gui.GuiScaleApplier;
+import com.heishandashu.moreswitches.client.healthbar.HealthBarOverlay;
 import com.heishandashu.moreswitches.client.keybind.SettingsKeybinds;
 import com.heishandashu.moreswitches.client.ui.SettingsScreen;
 import com.heishandashu.moreswitches.config.ModSettings;
@@ -31,7 +32,8 @@ public final class MoreSwitchesClient {
     public static void initializeClient() {
         ClientFeatures.registerAll();
         SettingsKeybinds.register();
-        // One tick hook for every scale change the 鑷敱鐣岄潰 page records.
+        HealthBarOverlay.register();
+        // One tick hook for every scale change the 自由界面 page records.
         ClientTickHook.onEndTick(client -> GuiScaleApplier.applyIfPending());
         MoreSwitchesMod.LOGGER.info("[{}] client ready -- {} More Switches modules",
                 MoreSwitchesMod.MOD_ID, SwitchIds.all().size());
@@ -83,7 +85,7 @@ public final class MoreSwitchesClient {
     }
 
     /**
-     * Re-applies the free scale saved by the 鑷敱鐣岄潰 page.
+     * Re-applies the free scale saved by the 自由界面 page.
      *
      * <p>The value has to be in place before the window settles, and one tick is the earliest point
      * where the window is certainly usable. Without this the setting would only come back the next

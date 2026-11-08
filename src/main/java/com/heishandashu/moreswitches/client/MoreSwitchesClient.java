@@ -5,6 +5,7 @@ import com.heishandashu.moreswitches.client.feature.ClientFeatures;
 import com.heishandashu.moreswitches.client.gui.FreeGuiScale;
 import com.heishandashu.moreswitches.client.gui.GuiScaleApplier;
 import com.heishandashu.moreswitches.client.i18n.ClientLanguageReload;
+import com.heishandashu.moreswitches.client.healthbar.HealthBarOverlay;
 import com.heishandashu.moreswitches.client.keybind.SettingsKeybinds;
 import com.heishandashu.moreswitches.client.ui.SettingsScreen;
 import com.heishandashu.moreswitches.config.ModSettings;
@@ -74,6 +75,7 @@ public final class MoreSwitchesClient {
         ClientFeatures.registerAll();
         TrackerClient.initialise();
         SettingsKeybinds.register();
+        HealthBarOverlay.register();
         // One tick hook for every scale change the 自由界面 page records.
         ClientTickHook.onEndTick(client -> GuiScaleApplier.applyIfPending());
 

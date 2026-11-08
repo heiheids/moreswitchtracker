@@ -4,12 +4,12 @@
 
 # More Switches Tracker
 
-**16 quality-of-life toggles + 12 tracking modules + free-form GUI scale, one window, three tabs**
+**16 quality-of-life toggles + 12 tracking modules + free-form GUI scale + overhead health bars, one window, four tabs**
 
 Minecraft 1.21.1 / 26.3 · Fabric &amp; NeoForge · English / 中文
 
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-1.1.0-brightgreen.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-1.2.0-brightgreen.svg)](CHANGELOG.md)
 
 [中文](README.md) · [English](README_EN.md)
 
@@ -29,6 +29,7 @@ By **黑山大叔 (Heishan Dashu)** · [Bilibili](https://space.bilibili.com/194
 - [The 16 toggles](#the-16-toggles)
 - [The 12 tracking modules](#the-12-tracking-modules)
 - [Tracker commands](#tracker-commands)
+- [Health bar (new in 1.2.0)](#health-bar-new-in-120)
 - [Language](#language)
 - [Config files](#config-files)
 - [Compatibility](#compatibility)
@@ -217,6 +218,28 @@ Only **Legacy tracking** is on by default; the rest are off.
 Coordinates and ids printed in chat are clickable and run the matching command.
 
 ---
+
+
+## Health bar (new in 1.2.0)
+
+<p align="center">
+  <img src="docs/screenshots/health-bars.png" width="70%" alt="Health bar tab">
+</p>
+
+A slim red bar above a creature's head, with its current and maximum health above it.
+
+| Setting | Options |
+|---|---|
+| **Show** | Both / Bar only / Numbers only / Off |
+| **Size** | Large / Medium / Small, scaling bar and text together |
+| **Category** | Monsters / Villagers / Golems / Animals, each switched on separately |
+
+- Up to 48 blocks away, at most 48 bars on screen at once.
+- The bar is drawn on the HUD rather than in the world, so it does not shrink with distance and
+  stays crisp at any GUI scale. The trade-off is that terrain does not hide it.
+- Classification: ids containing `golem` are golems, `Enemy` is a monster, `villager`/`trader` is a
+  villager, the remaining `Animal`s are animals. A zombie villager counts as a monster.
+- Off by default; stored under `healthBar` in `config/moreswitches.json`.
 
 ## Language
 

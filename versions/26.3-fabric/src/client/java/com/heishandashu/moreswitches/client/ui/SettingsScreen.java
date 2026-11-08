@@ -14,7 +14,7 @@ import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.Component;
 
 /**
- * The settings screen of the 26.3 build: a title row, three tabs and a Done button.
+ * The settings screen of the 26.3 build: a title row, four tabs and a Done button.
  *
  * <p>26.3 replaced immediate GUI drawing with extracted render state: {@code render} is gone and
  * the screen overrides {@link #extractRenderState}. The shell owns the same layout as the 1.21.1
@@ -33,7 +33,7 @@ public final class SettingsScreen extends Screen {
     private static final int DONE_WIDTH = 200;
     private static final int DONE_HEIGHT = 20;
     private static final int PREFERRED_TAB_WIDTH = 120;
-    private static final int MIN_TAB_WIDTH = 52;
+    private static final int MIN_TAB_WIDTH = 36;
     private static final int PREFERRED_LANGUAGE_WIDTH = 112;
     private static final int MIN_LANGUAGE_WIDTH = 80;
 
@@ -42,13 +42,14 @@ public final class SettingsScreen extends Screen {
     private static final int DIVIDER_COLOR = 0x30FFFFFF;
 
     /** Property values {@code moreswitchtracker.debugTab} accepts, in tab order. */
-    private static final String[] DEBUG_TAB_KEYS = {"switches", "tracker", "display"};
+    private static final String[] DEBUG_TAB_KEYS = {"switches", "tracker", "display", "health"};
 
     private final Screen parent;
     private final SettingsTab[] tabs = {
             new SwitchesSettingsTab(),
             new TrackerSettingsTab(),
-            new FreeGuiScaleTab()
+            new FreeGuiScaleTab(),
+            new HealthBarTab()
     };
 
     private int activeIndex = initialTab();
@@ -82,8 +83,10 @@ public final class SettingsScreen extends Screen {
         this.contentTop = HEADER_BOTTOM;
         this.contentBottom = Math.max(this.contentTop + 1, this.height - FOOTER_HEIGHT);
 
+        // The tabs get the space first: with four of them a generous language button would push the
+        // last tab underneath it, so the language width is derived from the window instead.
         this.languageWidth = Math.max(MIN_LANGUAGE_WIDTH,
-                Math.min(PREFERRED_LANGUAGE_WIDTH, Math.max(1, this.width / 3)));
+                Math.min(PREFERRED_LANGUAGE_WIDTH, Math.max(1, this.width / 4)));
         int tabGaps = TAB_GAP * (this.tabs.length - 1);
         int available = this.width - PADDING_X * 2 - this.languageWidth - LANGUAGE_GAP - tabGaps;
         this.tabWidth = Math.max(MIN_TAB_WIDTH,
