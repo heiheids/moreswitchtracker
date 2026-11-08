@@ -30,6 +30,10 @@ public final class PointHighlight {
     public static final double ANCHOR_DISTANCE = 12.0;
     /** Retained so 26.3-era tuning constants keep the same meaning. */
     public static final double SCREEN_FACTOR = 0.035;
+    /** Half-size of the HUD marker square, in GUI pixels. */
+    private static final int MARK_RADIUS = 7;
+    /** Gap between the marker and the caption above it, in GUI pixels. */
+    private static final int LABEL_GAP = 5;
 
     private PointHighlight() {
     }
@@ -42,31 +46,18 @@ public final class PointHighlight {
     public static void world(PoseStack pose, MultiBufferSource buffers, Vec3 target,
                              float red, float green, float blue, float alpha,
                              double boxHalf) {
-        LocalPlayer player = Minecraft.getInstance().player;
-        // The camera's interpolated position, not the player's tick position: anchoring on the
-        // latter makes every world marker stutter once per tick while the player walks.
-        Vec3 eye = player == null
-                ? target.add(0.0, 0.0, 8.0)
-                : Minecraft.getInstance().gameRenderer.getMainCamera().getPosition();
-        double distance = eye.distanceTo(target);
+        // The level's projection is only reachable while it is bound, which is here. The HUD pass
+        // reuses it so the marker lands exactly where the frame drew the world.
+        CameraProjection.capture();
 
+        if (boxHalf <= 0.0) {
+            return;
+        }
         WorldPainter.Batch batch = WorldPainter.beginThroughWalls(buffers, pose);
         try {
-            if (boxHalf > 0.0) {
-                AABB box = new AABB(target.x - boxHalf, target.y - boxHalf, target.z - boxHalf,
-                        target.x + boxHalf, target.y + boxHalf, target.z + boxHalf);
-                batch.box(box, red, green, blue, alpha);
-            }
-
-            // A world gizmo beyond the far plane is clipped, so far targets are re-anchored along
-            // the view direction: same screen position, unchanged apparent size, never culled.
-            Vec3 drawAt = target;
-            if (distance > NEAR_LIMIT) {
-                Vec3 direction = target.subtract(eye).scale(1.0 / Math.max(distance, 1.0E-4));
-                drawAt = eye.add(direction.scale(ANCHOR_DISTANCE));
-            }
-            double radius = TargetIcon.screenConstantRadius(drawAt, eye, SCREEN_FACTOR);
-            TargetIcon.draw(batch, drawAt, radius, eye, red, green, blue, alpha);
+            AABB box = new AABB(target.x - boxHalf, target.y - boxHalf, target.z - boxHalf,
+                    target.x + boxHalf, target.y + boxHalf, target.z + boxHalf);
+            batch.box(box, red, green, blue, alpha);
         } finally {
             batch.close();
         }
@@ -83,17 +74,23 @@ public final class PointHighlight {
         if (player == null) {
             return false;
         }
-        Vec3 eye = player.getEyePosition();
-        Vec3 forward = player.getViewVector(1.0f);
-        double fov = minecraft.options.fov().get();
         int width = minecraft.getWindow().getGuiScaledWidth();
         int height = minecraft.getWindow().getGuiScaledHeight();
 
-        ScreenProjection.Projected projected =
-                ScreenProjection.project(eye, forward, fov, width, height, target, 18.0);
-        if (projected.onScreen()) {
-            return WorldLabel.draw(graphics, eye, forward, fov, target, caption, color);
+        float[] screen = new float[2];
+        if (CameraProjection.project(minecraft, target, width, height, screen)) {
+            int centerX = Math.round(screen[0]);
+            int centerY = Math.round(screen[1]);
+            HudMarker.mark(graphics, centerX, centerY, MARK_RADIUS, color);
+            HudMarker.centeredText(graphics, minecraft.font, caption, centerX,
+                    centerY - MARK_RADIUS - LABEL_GAP - minecraft.font.lineHeight,
+                    width, height, color);
+            return true;
         }
+
+        ScreenProjection.Projected projected = ScreenProjection.project(
+                CameraProjection.eye(minecraft), player.getViewVector(1.0f),
+                minecraft.options.fov().get(), width, height, target, 18.0);
         EdgeArrow.draw(graphics, minecraft.font, width, height,
                 projected.screenX(), projected.screenY(),
                 projected.dirX(), projected.dirY(), caption, color);
