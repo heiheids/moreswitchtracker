@@ -19,8 +19,13 @@ import org.lwjgl.glfw.GLFW;
  * <p>Deliberately <b>not</b> done: the position is never written back. The player can drag the
  * window anywhere and it stays there; only its size is frozen.</p>
  *
- * <p>Minecraft 1.21.1 creates its window through GLFW, so that is the API used here. The newer
- * SDL-based windowing does not exist on this version.</p>
+ * <p><b>Why the lock has to be maintained rather than applied once:</b> the game writes its own
+ * window state during start-up and on some transitions, and both of the calls above are silently
+ * replaced when it does. In particular {@code GlDevice}'s constructor installs fresh size limits
+ * ({@code glfwSetWindowSizeLimits(handle, -1, -1, maxTextureSize, maxTextureSize)}), which wipes
+ * the pin and leaves the window freely resizable again. The client entry point runs before the
+ * renderer exists, so a lock taken there does not survive. The caller therefore re-asserts the lock
+ * from the tick loop.</p>
  */
 final class GameWindowLock {
 
@@ -38,7 +43,7 @@ final class GameWindowLock {
     private int lockedWidth;
     private int lockedHeight;
 
-    /** True while the switch is on and the window's size is actually frozen. */
+    /** True while the switch is on and the window's size is frozen. */
     boolean isLocked() {
         return this.locked;
     }
@@ -76,16 +81,41 @@ final class GameWindowLock {
         }
 
         this.windowHandle = handle;
-
-        GLFW.glfwSetWindowAttrib(handle, GLFW.GLFW_RESIZABLE, GLFW.GLFW_FALSE);
-        GLFW.glfwSetWindowSizeLimits(handle, this.lockedWidth, this.lockedHeight,
-                this.lockedWidth, this.lockedHeight);
+        pin(handle);
 
         this.locked = true;
         MoreSwitchesMod.LOGGER.info(
                 "[{}] window lock on: size fixed at {}x{}, position left free",
                 MoreSwitchesMod.MOD_ID, this.lockedWidth, this.lockedHeight);
         return true;
+    }
+
+    /** Writes the pin onto the native window. Separate so it can be repeated cheaply. */
+    private void pin(long handle) {
+        GLFW.glfwSetWindowAttrib(handle, GLFW.GLFW_RESIZABLE, GLFW.GLFW_FALSE);
+        GLFW.glfwSetWindowSizeLimits(handle, this.lockedWidth, this.lockedHeight,
+                this.lockedWidth, this.lockedHeight);
+    }
+
+    /**
+     * True when the resize border is still gone.
+     *
+     * <p>Only the attribute is read back: GLFW 3.3 has no getter for the size limits, so those are
+     * simply re-written whenever the lock is re-asserted. The attribute is the part the player
+     * notices -- it is what makes the window edges stop acting as drag handles.</p>
+     */
+    boolean isStillApplied() {
+        if (!this.locked || this.windowHandle == 0L) {
+            return false;
+        }
+        return GLFW.glfwGetWindowAttrib(this.windowHandle, GLFW.GLFW_RESIZABLE) == GLFW.GLFW_FALSE;
+    }
+
+    /** Re-applies the pin after something (vanilla start-up) overwrote it. */
+    void reapply() {
+        if (this.locked) {
+            pin(this.windowHandle);
+        }
     }
 
     /** Gives the window back its resize border. Position was never touched, so nothing to undo. */
