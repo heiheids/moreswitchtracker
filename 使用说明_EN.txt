@@ -1,0 +1,205 @@
+More Switches Tracker
+Version 1.2.5
+By 黑山大叔  ·  Bilibili https://space.bilibili.com/19428259  ·  GitHub https://github.com/heiheids
+
+================================================================
+1. What this is
+================================================================
+
+Two mods merged into one window:
+
+  · More Switches  - 16 client/server quality-of-life toggles
+  · Tracker        - 12 entity / drop / world-state trackers
+  · Free GUI scale - continuous GUI scaling (since 1.1.0)
+  · Health bar     - bar and numbers above creatures (since 1.2.0)
+
+One key, J, opens one window; four tabs at the top switch between them.
+
+
+================================================================
+2. Which file to download
+================================================================
+
+Check your game version and loader, then install exactly one jar:
+
+  Game        Loader             File
+  --------------------------------------------------------------------------
+  1.21.1      NeoForge 21.1.x    moreswitchtracker-neoforge-1.21.1-1.2.5.jar
+  26.3        NeoForge           moreswitchtracker-neoforge-26.3-1.2.5.jar
+  26.3        Fabric             moreswitchtracker-fabric-26.3-1.2.5.jar
+
+Only one may sit in a mods folder. Two of them will fail to start.
+
+
+================================================================
+3. Installing
+================================================================
+
+1. Install the matching Minecraft version and loader.
+2. Drop the jar into .minecraft/mods (or the instance's mods folder).
+3. Start the game and press J.
+
+Installing on both client and server is recommended: legacy tracking, cross-dimension
+player positions, wandering traders, persistent mobs, lag sources, mob ESP and aggro
+lines involve server-side logic. Client-only features (window lock, particles, sounds,
+light overlay, free GUI scale, health bar) work with a client-only install.
+
+
+================================================================
+4. The four tabs
+================================================================
+
+[ Switches ] [ Tracker ] [ Free GUI scale ] [ Health bar ]      [ Language: Auto ]
+--------------------------------------------------------------------------------
+                        contents of the current tab
+--------------------------------------------------------------------------------
+                  Press J to open or close this window
+                                [ Done ]
+
+· J opens and closes; the window does not pause single-player
+· The language button cycles Auto -> 中文 -> English; only this mod's text changes
+· One switch per feature, saved immediately
+· Scroll wheel scrolls the list
+
+
+================================================================
+5. Free GUI scale (1.1.0)
+================================================================
+
+Replaces vanilla's four integer steps with anything from 0.5x to 8x.
+
+  · Slider: 0.05x steps, commits when you release
+  · Vanilla presets: Vanilla / 1x / 2x / 3x / 4x
+  · Manual input: decimals such as 1.75, then Apply
+  · The cap is derived from the window size, keeping at least a 320x180 GUI
+
+"Vanilla" hands sizing back to the game. The scale is saved and restored on launch.
+
+Note: fractional scales put glyphs on fractional pixels, so text edges look slightly
+softer. Use an integer step if sharpness matters more than size.
+
+
+================================================================
+6. Health bar (1.2.0)
+================================================================
+
+A red bar with "current/max" above every creature.
+
+  · Show: Both / Bar only / Numbers only / Off
+  · Size: Large / Medium / Small, scaling bar and text together
+  · Categories: Monsters / Villagers / Golems / Animals, each switchable
+
+The bar has a fixed size in blocks, so it shrinks with distance; range 48 blocks,
+at most 48 bars at once. Drawn on the HUD, so it never stutters. Off by default.
+
+
+================================================================
+7. The 16 switches (all off by default)
+================================================================
+
+ 1 Lock window size          Dragging can no longer resize the window
+ 2 Firework rocket cooldown  No second rocket for 3 seconds
+ 3 Sleep when raining        Sleep during the day while it rains
+ 4 Disable Q drop            Q / Ctrl+Q no longer drop items
+ 5 Disable F11 fullscreen    F11 no longer toggles fullscreen
+ 6 Hide potion particles     Particles hidden, effect unchanged
+ 7 Light level preview       Cyan light level while holding a light source
+ 8 Dynamic light             Brightness gradient around a held light source
+ 9 Disable resource pack warning
+10 Disable campfire smoke
+11 Disable tutorial          No tutorial or new-recipe pop-ups
+12 Survival fake players     Edits the Carpet config; rejoin the world
+13 Auto-refill totem         Moves a totem into the offhand
+14 Mute explosions
+15 Mute minecarts
+16 Mute pistons
+
+
+================================================================
+8. The 12 trackers (only legacy tracking is on by default)
+================================================================
+
+ 1 Legacy tracking           Death point + drops highlighted for 5 minutes
+ 2 Player tracking           Type @name in chat to highlight for 10 minutes
+ 3 Wandering trader          Spawn notice, despawn countdown, highlight
+ 4 Persistent mob tracking   Finds mobs that never despawn
+ 5 Lag source tracking       Tick cost per entity / block entity / chunk
+ 6 Elite mob tracking        Highlights high-health mobs and shows health
+ 7 End gateway tracking      Marks the nearest end gateway
+ 8 Villager POI tracking     Lines from villagers to bed / workstation
+ 9 Zombie aggro tracking     Red line from a zombie to its target
+10 Ender dragon aggro        Blue line from the dragon to its target
+11 Custom coordinate         Enter x y z to highlight it; saved
+12 Mob ESP                   Hostile mobs within 128 blocks glow
+
+
+================================================================
+9. Tracker commands
+================================================================
+
+/tracker show <id>            re-highlight a death point
+/tracker hide                 stop highlighting the current death point
+/tracker list                 list recorded death points
+/tracker trader <uuid>        highlight a specific wandering trader
+/tracker lag [id]             list / highlight lag hotspots
+/tracker sound                preview the trader chime
+/tracker elite [uuid]         list / highlight elite mobs
+/tracker gateway              search for an end gateway
+/tracker coord                show and restore saved coordinates
+/tracker coord <x> <y> <z>    set coordinates and enable (supports ~)
+/tracker coord off            stop highlighting, keep the coordinates
+/tracker coord clear          clear the coordinates
+
+Coordinates and ids printed in chat are clickable.
+
+
+================================================================
+10. Config files
+================================================================
+
+Two files under config/, independent of each other:
+
+  config/moreswitches.json    the 16 toggles + language + free scale + health bar
+  config/tracker.json         the 12 trackers + custom coordinates
+
+Upgrading keeps your settings; no migration needed. Delete a file to restore defaults.
+
+The health bar section looks like this:
+
+  "healthBar": {
+    "display": "both",        // off / bar / numbers / both
+    "size": "medium",         // small / medium / large
+    "monsters": true,
+    "villagers": true,
+    "golems": true,
+    "animals": true
+  }
+
+
+================================================================
+11. FAQ
+================================================================
+
+Q: J does nothing.
+A: Check the key bindings screen; another mod may have taken it.
+
+Q: No health bars.
+A: They are off by default. Press J, open the Health bar tab, set Show to Both.
+
+Q: The GUI is too big or too small.
+A: J -> Free GUI scale. Use an integer step if the text looks soft.
+
+Q: Trackers do nothing.
+A: Tracking features need the mod on the server as well.
+
+Q: The game freezes.
+A: Since 1.2.5 a watchdog dumps all thread stacks into logs/latest.log if the frame
+   callback stops for 8 seconds; send that section. A known cause is the SwiftMap mod
+   blocking the render thread while chunks generate; that is unrelated to this mod.
+
+
+================================================================
+12. License
+================================================================
+
+MIT. Source: https://github.com/heiheids/moreswitchtracker

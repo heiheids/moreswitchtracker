@@ -18,7 +18,8 @@
     "MixinSoundEngine",
     "MixinLocalPlayerDrop",
     "MixinWindowFreeGuiScale",
-    "MixinGuiRendererFreeGuiScale"
+    "MixinGuiRendererFreeGuiScale",
+    "MixinLevelRendererOutline"
   ],
   "injectors": {
     "defaultRequire": 1

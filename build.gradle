@@ -20,6 +20,19 @@ java {
 
 neoForge {
     version = project.neo_version
+
+    // 临时：用于实机验证描边渲染
+    mods {
+        "moreswitchtracker" {
+            sourceSet sourceSets.main
+        }
+    }
+
+    runs {
+        client {
+            type = "client"
+        }
+    }
 }
 
 // The pure-Java logic (cooldown timing, slot arithmetic, sound matching) is tested with JUnit 5.

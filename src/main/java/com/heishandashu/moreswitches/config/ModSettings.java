@@ -62,6 +62,12 @@ public final class ModSettings {
     private boolean healthBarGolems = true;
     private boolean healthBarAnimals = true;
 
+    /** 更多自定义 page: 高对比度方块轮廓（1.21.1 原版没有这个功能，由本模组实现）。 */
+    private boolean highContrastOutline;
+
+    /** 更多自定义 page: which colour the high-contrast block outline uses. */
+    private OutlineColorStyle outlineColor = OutlineColorStyle.VANILLA;
+
     private ModSettings() {
     }
 
@@ -108,6 +114,12 @@ public final class ModSettings {
             }
             if (root.has("healthBar") && root.get("healthBar").isJsonObject()) {
                 settings.readHealthBar(root.getAsJsonObject("healthBar"));
+            }
+            if (root.has("outlineColor") && root.get("outlineColor").isJsonPrimitive()) {
+                settings.outlineColor = OutlineColorStyle.byId(root.get("outlineColor").getAsString());
+            }
+            if (root.has("highContrastOutline") && root.get("highContrastOutline").isJsonPrimitive()) {
+                settings.highContrastOutline = root.get("highContrastOutline").getAsBoolean();
             }
         } catch (Exception e) {
             // A broken file must not stop the game: report it with the path, keep the defaults,
@@ -261,6 +273,31 @@ public final class ModSettings {
         }
     }
 
+    /** 1.21.1 自己实现的高对比度方块开关（原版这一代没有该功能）。 */
+    public boolean highContrastOutline() {
+        return this.highContrastOutline;
+    }
+
+    public void setHighContrastOutline(boolean enabled) {
+        if (this.highContrastOutline != enabled) {
+            this.highContrastOutline = enabled;
+            save();
+        }
+    }
+
+    /** 更多自定义 page: the colour the high-contrast block outline uses. */
+    public OutlineColorStyle outlineColor() {
+        return this.outlineColor;
+    }
+
+    public void setOutlineColor(OutlineColorStyle value) {
+        OutlineColorStyle normalised = value == null ? OutlineColorStyle.VANILLA : value;
+        if (normalised != this.outlineColor) {
+            this.outlineColor = normalised;
+            save();
+        }
+    }
+
     public void save() {
         Path path = file();
         Path temporary = path.resolveSibling(path.getFileName() + ".tmp");
@@ -277,6 +314,8 @@ public final class ModSettings {
         healthBar.addProperty("golems", this.healthBarGolems);
         healthBar.addProperty("animals", this.healthBarAnimals);
         root.add("healthBar", healthBar);
+        root.addProperty("outlineColor", this.outlineColor.id());
+        root.addProperty("highContrastOutline", this.highContrastOutline);
         JsonObject stored = new JsonObject();
         for (Map.Entry<String, Boolean> entry : this.switches.entrySet()) {
             stored.addProperty(entry.getKey(), entry.getValue());

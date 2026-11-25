@@ -32,24 +32,26 @@ public final class SettingsScreen extends Screen {
     private static final int FOOTER_HEIGHT = 44;
     private static final int DONE_WIDTH = 200;
     private static final int DONE_HEIGHT = 20;
-    private static final int PREFERRED_TAB_WIDTH = 120;
-    private static final int MIN_TAB_WIDTH = 36;
-    private static final int PREFERRED_LANGUAGE_WIDTH = 112;
-    private static final int MIN_LANGUAGE_WIDTH = 80;
+    private static final int PREFERRED_TAB_WIDTH = 104;
+    private static final int MIN_TAB_WIDTH = 46;
+    private static final int PREFERRED_LANGUAGE_WIDTH = 104;
+    private static final int MIN_LANGUAGE_WIDTH = 76;
 
     private static final int TEXT_COLOR_HINT = 0xFF909090;
     private static final int TAB_ACTIVE_COLOR = 0xFFFFFFFF;
     private static final int DIVIDER_COLOR = 0x30FFFFFF;
 
     /** Property values {@code moreswitchtracker.debugTab} accepts, in tab order. */
-    private static final String[] DEBUG_TAB_KEYS = {"switches", "tracker", "display", "health"};
+    private static final String[] DEBUG_TAB_KEYS = {"switches", "tracker", "display", "health",
+            "customize"};
 
     private final Screen parent;
     private final SettingsTab[] tabs = {
             new SwitchesSettingsTab(),
             new TrackerSettingsTab(),
             new FreeGuiScaleTab(),
-            new HealthBarTab()
+            new HealthBarTab(),
+            new CustomizeTab()
     };
 
     private int activeIndex = initialTab();
@@ -84,7 +86,7 @@ public final class SettingsScreen extends Screen {
         this.contentBottom = Math.max(this.contentTop + 1, this.height - FOOTER_HEIGHT);
 
         this.languageWidth = Math.max(MIN_LANGUAGE_WIDTH,
-                Math.min(PREFERRED_LANGUAGE_WIDTH, Math.max(1, this.width / 4)));
+                Math.min(PREFERRED_LANGUAGE_WIDTH, Math.max(1, this.width / 5)));
         int tabGaps = TAB_GAP * (this.tabs.length - 1);
         int available = this.width - PADDING_X * 2 - this.languageWidth - LANGUAGE_GAP - tabGaps;
         this.tabWidth = Math.max(MIN_TAB_WIDTH,
@@ -93,8 +95,10 @@ public final class SettingsScreen extends Screen {
         int x = PADDING_X;
         for (int index = 0; index < this.tabs.length; index++) {
             final int target = index;
+            // 标签必须裁到按钮宽度以内：5 个选项卡在小窗口里很容易越界。
+            String label = fit(ModLang.text(this.tabs[index].titleKey()), this.tabWidth - 8);
             Button button = Button.builder(
-                            Component.literal(ModLang.text(this.tabs[index].titleKey())),
+                            Component.literal(label),
                             pressed -> selectTab(target))
                     .bounds(x, TAB_TOP, this.tabWidth, TAB_HEIGHT)
                     .build();
