@@ -30,6 +30,7 @@ By **黑山大叔 (Heishan Dashu)** · [Bilibili](https://space.bilibili.com/194
 - [The 12 tracking modules](#the-12-tracking-modules)
 - [Tracker commands](#tracker-commands)
 - [Health bar (new in 1.2.0)](#health-bar-new-in-120)
+- [More Custom (new in 1.2.7)](#more-custom-new-in-127)
 - [Language](#language)
 - [Config files](#config-files)
 - [Compatibility](#compatibility)
@@ -71,9 +72,9 @@ Check your game version and loader, then pick the matching jar:
 
 | Game version | Loader | File | Java |
 |---|---|---|---|
-| 1.21.1 | NeoForge 21.1.x | `moreswitchtracker-neoforge-1.21.1-1.1.0.jar` | Java 21 |
-| 26.3 | NeoForge | `moreswitchtracker-neoforge-26.3-1.1.0.jar` | Java 21+ |
-| 26.3 | Fabric | `moreswitchtracker-fabric-26.3-1.1.0.jar` | Java 21+ |
+| 1.21.1 | NeoForge 21.1.x | `moreswitchtracker-neoforge-1.21.1-1.2.7.jar` | Java 21 |
+| 26.3 | NeoForge | `moreswitchtracker-neoforge-26.3-1.2.7.jar` | Java 25 |
+| 26.3 | Fabric | `moreswitchtracker-fabric-26.3-1.2.7.jar` | Java 25 |
 
 > **Install only one.** Never put two of these in the same `mods` folder. A jar built for the wrong loader will fail to start.
 
@@ -247,6 +248,25 @@ A slim red bar above a creature's head, with its current and maximum health abov
   villager, the remaining `Animal`s are animals. A zombie villager counts as a monster.
 - Off by default; stored under `healthBar` in `config/moreswitches.json`.
 
+## More Custom (new in 1.2.7)
+
+Vanilla has a **high contrast block outline** in Accessibility: the targeted block gets a thick black backing line plus a thin coloured outline. This tab brings it into the same window and adds colour choice:
+
+| Option | Effect |
+|---|---|
+| High contrast block outlines | The same switch as the vanilla Accessibility option on 26.3; changes are written to `options.txt` immediately |
+| Vanilla high contrast | No override, keep the vanilla cyan outline |
+| Yellow-green / Orange / Purple | Replace the thin coloured line; the black backing stays, so contrast is unchanged |
+
+The page is a compact one-row-per-setting layout: label on the left, control on the right, switch and the four colours inside a single divider box with the swatches on one row. Colour names and the "turn the switch on first" hint live in the hover tooltip, so they cost no extra height. Adding a future setting is one more entry in the row list.
+
+Two implementations, depending on the game version:
+
+- **26.3 (Fabric / NeoForge)**: only the outline colour passed to `LevelRenderer.submitHitOutline` is changed. Drawing is not taken over, so the surface for conflicts with other rendering mods is small.
+- **1.21.1 (NeoForge)**: that version has no high contrast block outline at all, so the mod draws it: `RenderHighlightEvent.Block` cancels the vanilla outline, then the same shape is drawn twice — an 8-pixel black backing plus a 2.8-pixel coloured line. The backing writes no depth, so the coloured line cannot fight it for the depth test, and there are no dashed edges or flicker.
+
+The switch state lives in `config/moreswitches.json`: on 26.3 it is kept in sync with the vanilla Accessibility option, on 1.21.1 the mod stores it itself.
+
 ## Language
 
 - **Auto** by default: Chinese if the game is Chinese, English otherwise.
@@ -359,7 +379,7 @@ An honest account of how much each build has been verified:
 |---|---|---|
 | 26.3 Fabric | ✅ | ✅ every tab, plus the free-scale slider, presets, manual input and restart persistence |
 | 26.3 NeoForge | ✅ | ⚠️ shares the same client code as Fabric, not exercised item by item |
-| 1.21.1 NeoForge | ✅ | ⚠️ free scale uses a different mixin path, not exercised item by item |
+| 1.21.1 NeoForge | ✅ | ✅ More Custom (self-drawn outline) and the window lock both verified in a real client; the lock also survives a restart |
 
 If something breaks, please open an issue with `logs/latest.log` attached.
 

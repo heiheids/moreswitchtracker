@@ -1,5 +1,5 @@
 More Switches Tracker
-Version 1.2.5
+Version 1.2.7
 By 黑山大叔  ·  Bilibili https://space.bilibili.com/19428259  ·  GitHub https://github.com/heiheids
 
 ================================================================
@@ -12,8 +12,9 @@ Two mods merged into one window:
   · Tracker        - 12 entity / drop / world-state trackers
   · Free GUI scale - continuous GUI scaling (since 1.1.0)
   · Health bar     - bar and numbers above creatures (since 1.2.0)
+  · More Custom    - vanilla high contrast block outlines + four colours (since 1.2.7)
 
-One key, J, opens one window; four tabs at the top switch between them.
+One key, J, opens one window; five tabs at the top switch between them.
 
 
 ================================================================
@@ -24,9 +25,9 @@ Check your game version and loader, then install exactly one jar:
 
   Game        Loader             File
   --------------------------------------------------------------------------
-  1.21.1      NeoForge 21.1.x    moreswitchtracker-neoforge-1.21.1-1.2.5.jar
-  26.3        NeoForge           moreswitchtracker-neoforge-26.3-1.2.5.jar
-  26.3        Fabric             moreswitchtracker-fabric-26.3-1.2.5.jar
+  1.21.1      NeoForge 21.1.x    moreswitchtracker-neoforge-1.21.1-1.2.7.jar
+  26.3        NeoForge           moreswitchtracker-neoforge-26.3-1.2.7.jar
+  26.3        Fabric             moreswitchtracker-fabric-26.3-1.2.7.jar
 
 Only one may sit in a mods folder. Two of them will fail to start.
 
@@ -46,10 +47,10 @@ light overlay, free GUI scale, health bar) work with a client-only install.
 
 
 ================================================================
-4. The four tabs
+4. The five tabs
 ================================================================
 
-[ Switches ] [ Tracker ] [ Free GUI scale ] [ Health bar ]      [ Language: Auto ]
+[ Switches ] [ Tracker ] [ Free GUI scale ] [ Health bar ] [ Custom ]   [ Language: Auto ]
 --------------------------------------------------------------------------------
                         contents of the current tab
 --------------------------------------------------------------------------------
@@ -94,7 +95,36 @@ at most 48 bars at once. Drawn on the HUD, so it never stutters. Off by default.
 
 
 ================================================================
-7. The 16 switches (all off by default)
+7. More Custom (1.2.7)
+================================================================
+
+Vanilla has a "high contrast block outlines" option in Accessibility; this tab
+brings the same switch into this window and adds colour choice.
+
+  · High contrast block outlines  - same switch as the vanilla Accessibility option on 26.3
+  · Vanilla high contrast         - no override, keep the vanilla cyan outline
+  · Yellow-green / Orange / Purple - replace the thin coloured line, black backing stays
+
+One row per setting: label on the left, control on the right, the switch and the
+four colours in one divider box with the swatches on a single row. Colour names
+and the "turn the switch on first" hint live in the hover tooltip, so they take
+no extra height.
+
+26.3 (Fabric / NeoForge) only changes the outline colour passed to
+LevelRenderer.submitHitOutline; drawing is not taken over, so conflicts with other
+rendering mods are unlikely.
+
+1.21.1 (NeoForge) has no such vanilla feature at all, so the mod draws it:
+RenderHighlightEvent.Block cancels the vanilla outline, then the same shape is
+drawn twice - an 8-pixel black backing plus a 2.8-pixel coloured line. The backing
+writes no depth, so the coloured line cannot fight it for the depth test and there
+are no dashed edges or flicker.
+
+The switch state lives in config/moreswitches.json: on 26.3 it stays in sync with
+the vanilla Accessibility option, on 1.21.1 the mod stores it itself.
+
+================================================================
+8. The 16 switches (all off by default)
 ================================================================
 
  1 Lock window size          Dragging can no longer resize the window
@@ -116,7 +146,7 @@ at most 48 bars at once. Drawn on the HUD, so it never stutters. Off by default.
 
 
 ================================================================
-8. The 12 trackers (only legacy tracking is on by default)
+9. The 12 trackers (only legacy tracking is on by default)
 ================================================================
 
  1 Legacy tracking           Death point + drops highlighted for 5 minutes
@@ -134,7 +164,7 @@ at most 48 bars at once. Drawn on the HUD, so it never stutters. Off by default.
 
 
 ================================================================
-9. Tracker commands
+10. Tracker commands
 ================================================================
 
 /tracker show <id>            re-highlight a death point
@@ -154,7 +184,7 @@ Coordinates and ids printed in chat are clickable.
 
 
 ================================================================
-10. Config files
+11. Config files
 ================================================================
 
 Two files under config/, independent of each other:
@@ -177,7 +207,7 @@ The health bar section looks like this:
 
 
 ================================================================
-11. FAQ
+12. FAQ
 ================================================================
 
 Q: J does nothing.
@@ -199,7 +229,7 @@ A: Since 1.2.5 a watchdog dumps all thread stacks into logs/latest.log if the fr
 
 
 ================================================================
-12. License
+13. License
 ================================================================
 
 MIT. Source: https://github.com/heiheids/moreswitchtracker
