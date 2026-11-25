@@ -72,9 +72,9 @@ Minecraft 1.21.1 / 26.3 · Fabric &amp; NeoForge · 中文 / English
 
 | 游戏版本 | 加载器 | 下载文件 | 需要的 Java |
 |---|---|---|---|
-| 1.21.1 | NeoForge 21.1.x | `moreswitchtracker-neoforge-1.21.1-1.1.0.jar` | Java 21 |
-| 26.3 | NeoForge | `moreswitchtracker-neoforge-26.3-1.1.0.jar` | Java 21+ |
-| 26.3 | Fabric | `moreswitchtracker-fabric-26.3-1.1.0.jar` | Java 21+ |
+| 1.21.1 | NeoForge 21.1.x | `moreswitchtracker-neoforge-1.21.1-1.2.7.jar` | Java 21 |
+| 26.3 | NeoForge | `moreswitchtracker-neoforge-26.3-1.2.7.jar` | Java 25 |
+| 26.3 | Fabric | `moreswitchtracker-fabric-26.3-1.2.7.jar` | Java 25 |
 
 > **不要一次装多个。** 同一个游戏版本只放一个 jar。装错加载器的版本会直接启动失败。
 
@@ -260,7 +260,12 @@ Minecraft 1.21.1 / 26.3 · Fabric &amp; NeoForge · 中文 / English
 
 页面是一行一个设置的紧凑布局：左边标题、右边控件，开关和四种颜色装在同一条分隔线内，四个色块排成一行；颜色名称和「先开开关」的提示都放在悬停提示里，所以不占额外高度。以后再加设置，往行列表里添一行即可。
 
-实现上只改一个渲染参数（`LevelRenderer.submitHitOutline` 的描边颜色），不接管绘制，所以和其它渲染模组冲突面很小。
+实现分两条路：
+
+- **26.3（Fabric / NeoForge）**：只改一个渲染参数（`LevelRenderer.submitHitOutline` 的描边颜色），不接管绘制，所以和其它渲染模组冲突面很小。
+- **1.21.1（NeoForge）**：这一代原版没有高对比度方块轮廓，所以由模组自己画——用 `RenderHighlightEvent.Block` 取消原版描边，再画两遍同一形状：8 像素粗的黑色衬边 + 2.8 像素的彩色细线。衬边只写颜色不写深度，彩色线才不会和它抢深度，也就不会出现断线或闪烁。
+
+开关状态存在 `config/moreswitches.json`：26.3 与游戏自带的辅助功能选项双向同步，1.21.1 由本模组保存。
 
 ## 语言
 
@@ -311,8 +316,8 @@ moreswitchtracker/
 
 ```bash
 ./gradlew build
-# 产物 build/libs/moreswitchtracker-1.1.0.jar
-# 发布时重命名为 moreswitchtracker-neoforge-1.21.1-1.1.0.jar
+# 产物 build/libs/moreswitchtracker-1.2.7.jar
+# 发布时重命名为 moreswitchtracker-neoforge-1.21.1-1.2.7.jar
 ```
 
 ### 26.3 Fabric
@@ -320,7 +325,7 @@ moreswitchtracker/
 ```bash
 cd versions/26.3-fabric
 ./gradlew build
-# 产物 build/libs/moreswitchtracker-1.1.0.jar
+# 产物 build/libs/moreswitchtracker-1.2.7.jar
 ```
 
 ### 26.3 NeoForge
@@ -328,7 +333,7 @@ cd versions/26.3-fabric
 ```bash
 cd versions/26.3-neoforge
 ./gradlew build
-# 产物 build/libs/moreswitchtracker-neoforge-26.3-1.1.0.jar
+# 产物 build/libs/moreswitchtracker-neoforge-26.3-1.2.7.jar
 ```
 
 三个工程都需要联网下载 Minecraft 与加载器依赖，首次构建较慢。
@@ -375,7 +380,7 @@ src/main/java/com/heishandashu/
 |---|---|---|
 | 26.3 Fabric | ✅ | ✅ 全部选项卡与自由界面的滑块、档位、手动输入、重启恢复均已实测 |
 | 26.3 NeoForge | ✅ | ⚠️ 与 Fabric 共用同一份客户端代码，未逐项实测 |
-| 1.21.1 NeoForge | ✅ | ⚠️ 自由界面的 mixin 路径不同，未逐项实测 |
+| 1.21.1 NeoForge | ✅ | ✅ 更多自定义（自绘描边）与窗口锁定重启后仍生效均已实测 |
 
 遇到问题请带上 `logs/latest.log` 提 issue。
 
