@@ -1,6 +1,8 @@
 {
   "key.category.moreswitchtracker.main": "More Switches Tracker",
   "key.moreswitchtracker.open_settings": "Open settings screen",
+  "moreswitchtracker.customize.attack_range": "Attack range highlight",
+  "moreswitchtracker.customize.attack_range.desc": "While holding a melee weapon, monsters inside the weapon's attack range glow with the same white outline as a spectral arrow, and the outline clears the moment they leave that range. Hostile mobs only: villagers and animals are never marked, and bare hands or ranged weapons such as bows and crossbows show nothing. Swords, axes, spears, tridents and maces each use their own real attack range.",
   "moreswitchtracker.customize.color": "Outline colour",
   "moreswitchtracker.customize.color.desc": "Colour of the thin outline line. The black backing line is always kept, so lighter colours stay readable.",
   "moreswitchtracker.customize.color.lime": "Yellow-green",

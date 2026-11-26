@@ -72,9 +72,9 @@ Minecraft 1.21.1 / 26.3 · Fabric &amp; NeoForge · 中文 / English
 
 | 游戏版本 | 加载器 | 下载文件 | 需要的 Java |
 |---|---|---|---|
-| 1.21.1 | NeoForge 21.1.x | `moreswitchtracker-neoforge-1.21.1-1.2.7.jar` | Java 21 |
-| 26.3 | NeoForge | `moreswitchtracker-neoforge-26.3-1.2.7.jar` | Java 25 |
-| 26.3 | Fabric | `moreswitchtracker-fabric-26.3-1.2.7.jar` | Java 25 |
+| 1.21.1 | NeoForge 21.1.x | `moreswitchtracker-neoforge-1.21.1-1.2.8.jar` | Java 21 |
+| 26.3 | NeoForge | `moreswitchtracker-neoforge-26.3-1.2.8.jar` | Java 25 |
+| 26.3 | Fabric | `moreswitchtracker-fabric-26.3-1.2.8.jar` | Java 25 |
 
 > **不要一次装多个。** 同一个游戏版本只放一个 jar。装错加载器的版本会直接启动失败。
 
@@ -267,6 +267,20 @@ Minecraft 1.21.1 / 26.3 · Fabric &amp; NeoForge · 中文 / English
 
 开关状态存在 `config/moreswitches.json`：26.3 与游戏自带的辅助功能选项双向同步，1.21.1 由本模组保存。
 
+### 攻击距离高亮（1.2.8 新增）
+
+同一个选项卡里新增第二个开关：**攻击距离高亮**。手持近战武器时，凡是武器当前能打到的怪物，都会亮起**和光灵箭完全相同的白色发光轮廓**；怪物一走出攻击距离，轮廓在下一帧立即消失。
+
+| 规则 | 说明 |
+|---|---|
+| 只标记怪物 | 必须是原版定义的敌对生物（`Mob` + `Enemy`）。僵尸、骷髅、苦力怕、蜘蛛、猪灵会亮；村民、动物、铁傀儡、玩家不会 |
+| 只对近战武器生效 | 剑、斧、矛、三叉戟、重锤等；空手、弓、弩、食物、方块不显示 |
+| 按武器自己的攻击距离 | 26.3 用武器的 `ATTACK_RANGE`（剑 3 格、矛 4.5 格，创造 5 格）；1.21.1 用实体交互距离（生存 3 格、创造 5 格），再减 0.05 格安全余量。距离按**瞄准身体中心时的实际命中点**算，而不是碰撞箱最近点 |
+| 实时判定 | 每帧重新计算，不缓存状态，所以离开范围立刻清除、切武器立刻变化 |
+
+实现上不自己画轮廓：只让 `Minecraft.shouldEntityAppearGlowing` 对这个怪物返回 true，原版的 `entity_outline` 后处理照常工作，所以显示效果与光灵箭一致，也天然兼容光影。
+
+
 ## 语言
 
 - 默认 **自动**：游戏是中文就显示中文，其余显示英文。
@@ -316,8 +330,8 @@ moreswitchtracker/
 
 ```bash
 ./gradlew build
-# 产物 build/libs/moreswitchtracker-1.2.7.jar
-# 发布时重命名为 moreswitchtracker-neoforge-1.21.1-1.2.7.jar
+# 产物 build/libs/moreswitchtracker-1.2.8.jar
+# 发布时重命名为 moreswitchtracker-neoforge-1.21.1-1.2.8.jar
 ```
 
 ### 26.3 Fabric
@@ -325,7 +339,7 @@ moreswitchtracker/
 ```bash
 cd versions/26.3-fabric
 ./gradlew build
-# 产物 build/libs/moreswitchtracker-1.2.7.jar
+# 产物 build/libs/moreswitchtracker-1.2.8.jar
 ```
 
 ### 26.3 NeoForge
@@ -333,7 +347,7 @@ cd versions/26.3-fabric
 ```bash
 cd versions/26.3-neoforge
 ./gradlew build
-# 产物 build/libs/moreswitchtracker-neoforge-26.3-1.2.7.jar
+# 产物 build/libs/moreswitchtracker-neoforge-26.3-1.2.8.jar
 ```
 
 三个工程都需要联网下载 Minecraft 与加载器依赖，首次构建较慢。

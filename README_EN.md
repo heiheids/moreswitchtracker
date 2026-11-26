@@ -72,9 +72,9 @@ Check your game version and loader, then pick the matching jar:
 
 | Game version | Loader | File | Java |
 |---|---|---|---|
-| 1.21.1 | NeoForge 21.1.x | `moreswitchtracker-neoforge-1.21.1-1.2.7.jar` | Java 21 |
-| 26.3 | NeoForge | `moreswitchtracker-neoforge-26.3-1.2.7.jar` | Java 25 |
-| 26.3 | Fabric | `moreswitchtracker-fabric-26.3-1.2.7.jar` | Java 25 |
+| 1.21.1 | NeoForge 21.1.x | `moreswitchtracker-neoforge-1.21.1-1.2.8.jar` | Java 21 |
+| 26.3 | NeoForge | `moreswitchtracker-neoforge-26.3-1.2.8.jar` | Java 25 |
+| 26.3 | Fabric | `moreswitchtracker-fabric-26.3-1.2.8.jar` | Java 25 |
 
 > **Install only one.** Never put two of these in the same `mods` folder. A jar built for the wrong loader will fail to start.
 
@@ -266,6 +266,20 @@ Two implementations, depending on the game version:
 - **1.21.1 (NeoForge)**: that version has no high contrast block outline at all, so the mod draws it: `RenderHighlightEvent.Block` cancels the vanilla outline, then the same shape is drawn twice — an 8-pixel black backing plus a 2.8-pixel coloured line. The backing writes no depth, so the coloured line cannot fight it for the depth test, and there are no dashed edges or flicker.
 
 The switch state lives in `config/moreswitches.json`: on 26.3 it is kept in sync with the vanilla Accessibility option, on 1.21.1 the mod stores it itself.
+
+### Attack range highlight (new in 1.2.8)
+
+The same tab has a second switch: **Attack range highlight**. While you hold a melee weapon, every monster the weapon can currently reach glows with **the same white outline as a spectral arrow**, and the outline clears on the next frame once the monster leaves that range.
+
+| Rule | Detail |
+|---|---|
+| Monsters only | The entity must be a hostile mob (`Mob` and `Enemy`). Zombies, skeletons, creepers, spiders and piglins glow; villagers, animals, iron golems and players never do |
+| Melee weapons only | Swords, axes, spears, tridents and maces; bare hands, bows, crossbows, food and blocks show nothing |
+| Each weapon's own reach | 26.3 uses the weapon's `ATTACK_RANGE` (3 blocks for swords, 4.5 for spears, 5 in creative); 1.21.1 uses the entity interaction distance (3 survival, 5 creative) minus a 0.05-block safety margin. The distance is measured to the point a real click would hit when aiming at the body centre, not to the nearest corner of the hitbox |
+| Live check | Recomputed every frame with no cached state, so it clears the instant a monster steps out and follows a weapon swap immediately |
+
+Nothing is drawn by the mod: it only makes `Minecraft.shouldEntityAppearGlowing` return true for those monsters, so vanilla's `entity_outline` post chain does the work — the result is identical to a spectral arrow and stays compatible with shaders.
+
 
 ## Language
 

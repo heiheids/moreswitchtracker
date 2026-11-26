@@ -1,5 +1,5 @@
 More Switches Tracker
-Version 1.2.7
+Version 1.2.8
 By 黑山大叔  ·  Bilibili https://space.bilibili.com/19428259  ·  GitHub https://github.com/heiheids
 
 ================================================================
@@ -25,9 +25,9 @@ Check your game version and loader, then install exactly one jar:
 
   Game        Loader             File
   --------------------------------------------------------------------------
-  1.21.1      NeoForge 21.1.x    moreswitchtracker-neoforge-1.21.1-1.2.7.jar
-  26.3        NeoForge           moreswitchtracker-neoforge-26.3-1.2.7.jar
-  26.3        Fabric             moreswitchtracker-fabric-26.3-1.2.7.jar
+  1.21.1      NeoForge 21.1.x    moreswitchtracker-neoforge-1.21.1-1.2.8.jar
+  26.3        NeoForge           moreswitchtracker-neoforge-26.3-1.2.8.jar
+  26.3        Fabric             moreswitchtracker-fabric-26.3-1.2.8.jar
 
 Only one may sit in a mods folder. Two of them will fail to start.
 
@@ -95,7 +95,7 @@ at most 48 bars at once. Drawn on the HUD, so it never stutters. Off by default.
 
 
 ================================================================
-7. More Custom (1.2.7)
+7. More Custom (1.2.7; attack range highlight added in 1.2.8)
 ================================================================
 
 Vanilla has a "high contrast block outlines" option in Accessibility; this tab
@@ -109,6 +109,17 @@ One row per setting: label on the left, control on the right, the switch and the
 four colours in one divider box with the swatches on a single row. Colour names
 and the "turn the switch on first" hint live in the hover tooltip, so they take
 no extra height.
+
+  · Attack range highlight (since 1.2.8): while you hold a melee weapon, every
+    monster the weapon can reach glows with the same white outline as a spectral
+    arrow, and the outline clears the moment it leaves that range.
+    Hostile mobs only: zombies, skeletons, creepers, spiders and piglins glow;
+    villagers, animals and iron golems never do.
+    Melee weapons only: swords, axes, spears, tridents, maces; bare hands and
+    bows/crossbows show nothing.
+    26.3 uses each weapon's own attack range (about 3 blocks for swords, 4.5 for
+    spears; creative differs); 1.21.1 uses the entity interaction range
+    (3 survival / 5 creative) with no extra margin.
 
 26.3 (Fabric / NeoForge) only changes the outline colour passed to
 LevelRenderer.submitHitOutline; drawing is not taken over, so conflicts with other

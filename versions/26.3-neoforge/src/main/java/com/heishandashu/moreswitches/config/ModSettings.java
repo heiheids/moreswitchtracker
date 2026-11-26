@@ -54,6 +54,14 @@ public final class ModSettings {
     /** 更多自定义 page: which colour the high-contrast block outline uses. */
     private OutlineColorStyle outlineColor = OutlineColorStyle.VANILLA;
 
+    /**
+     * 更多自定义 page: outline every hostile mob the held melee weapon can reach.
+     *
+     * <p>Off by default, like every other switch in the mod. The value is read live by the
+     * renderer, so flipping it in the screen takes effect on the very next frame.</p>
+     */
+    private boolean attackRangeHighlight;
+
     private ModSettings() {
     }
 
@@ -104,6 +112,7 @@ public final class ModSettings {
             if (root.has("outlineColor") && root.get("outlineColor").isJsonPrimitive()) {
                 settings.outlineColor = OutlineColorStyle.byId(root.get("outlineColor").getAsString());
             }
+            settings.attackRangeHighlight = readBoolean(root, "attackRangeHighlight", false);
         } catch (Exception e) {
             MoreSwitchesMod.LOGGER.warn("[{}] could not read {} -- defaults kept",
                     MoreSwitchesMod.MOD_ID, path, e);
@@ -259,6 +268,18 @@ public final class ModSettings {
         }
     }
 
+    /** 更多自定义 page: highlight the monsters the held melee weapon can reach. */
+    public boolean attackRangeHighlight() {
+        return this.attackRangeHighlight;
+    }
+
+    public void setAttackRangeHighlight(boolean enabled) {
+        if (enabled != this.attackRangeHighlight) {
+            this.attackRangeHighlight = enabled;
+            save();
+        }
+    }
+
     public void save() {
         Path path = file();
         Path temporary = path.resolveSibling(path.getFileName() + ".tmp");
@@ -276,6 +297,7 @@ public final class ModSettings {
         healthBar.addProperty("animals", this.healthBarAnimals);
         root.add("healthBar", healthBar);
         root.addProperty("outlineColor", this.outlineColor.id());
+        root.addProperty("attackRangeHighlight", this.attackRangeHighlight);
         JsonObject stored = new JsonObject();
         for (Map.Entry<String, Boolean> entry : this.switches.entrySet()) {
             stored.addProperty(entry.getKey(), entry.getValue());

@@ -1,6 +1,8 @@
 {
   "key.category.moreswitchtracker.main": "更多开关追踪",
   "key.moreswitchtracker.open_settings": "打开设置界面",
+  "moreswitchtracker.customize.attack_range": "攻击距离高亮",
+  "moreswitchtracker.customize.attack_range.desc": "手持近战武器时，处于攻击距离内的怪物会显示与光灵箭相同的白色发光轮廓；怪物离开攻击距离后立刻消失。只标记敌对怪物，不标记村民、动物等中立生物；空手和弓弩等远程武器不显示。剑、斧、三叉戟、重锤可触发，生存 3 格、创造 5 格。",
   "moreswitchtracker.customize.color": "描边颜色",
   "moreswitchtracker.customize.color.desc": "选择彩色描边使用的颜色；黑色衬边始终保留，所以换成浅色也依然显眼。",
   "moreswitchtracker.customize.color.lime": "黄绿色",

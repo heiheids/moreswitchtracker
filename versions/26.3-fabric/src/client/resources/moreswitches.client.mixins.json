@@ -7,6 +7,7 @@
   "client": [
     "MixinMultiPlayerGameMode",
     "MixinMinecraftFullscreen",
+    "MixinMinecraftEntityOutline",
     "MixinClientLevelParticles",
     "MixinLightSampling",
     "MixinLightSamplingOuter",

@@ -42,11 +42,13 @@ final class CustomizeTab implements SettingsTab {
     /** 每行左侧的标题键，顺序即显示顺序。加设置项时在这里加一行即可。 */
     private static final String[] ROW_LABEL_KEYS = {
             "moreswitchtracker.customize.high_contrast",
-            "moreswitchtracker.customize.color"
+            "moreswitchtracker.customize.color",
+            "moreswitchtracker.customize.attack_range"
     };
 
     private static final int ROW_HIGHLIGHT = 0;
     private static final int ROW_COLOR = 1;
+    private static final int ROW_ATTACK_RANGE = 2;
 
     private static final OutlineColorStyle[] COLORS = {
             OutlineColorStyle.VANILLA,
@@ -93,6 +95,18 @@ final class CustomizeTab implements SettingsTab {
         toggle.setTooltip(Tooltip.create(Component.literal(
                 ModLang.text("moreswitchtracker.customize.high_contrast.desc"))));
         host.addTabWidget(toggle);
+
+        ToggleSwitchWidget attackRange = new ToggleSwitchWidget(
+                this.boxRight - BOX_PADDING_X - TOGGLE_WIDTH,
+                rowCenterY(ROW_ATTACK_RANGE) - TOGGLE_HEIGHT / 2,
+                TOGGLE_WIDTH,
+                TOGGLE_HEIGHT,
+                Component.literal(ModLang.text(ROW_LABEL_KEYS[ROW_ATTACK_RANGE])),
+                () -> ModSettings.get().attackRangeHighlight(),
+                value -> ModSettings.get().setAttackRangeHighlight(value));
+        attackRange.setTooltip(Tooltip.create(Component.literal(
+                ModLang.text("moreswitchtracker.customize.attack_range.desc"))));
+        host.addTabWidget(attackRange);
 
         int groupWidth = COLORS.length * SWATCH_WIDTH + (COLORS.length - 1) * SWATCH_GAP;
         int groupX = this.boxRight - BOX_PADDING_X - groupWidth;
